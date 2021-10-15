@@ -28,7 +28,7 @@ I will use the [BEA-2019 GEC dataset](https://aclanthology.org/W19-4406.pdf). Fo
 
 ### Objectives
 
-The goal of the project is to build a GEC system that achieves accuracy comparable to those in the mentioned papers while also gaining an understanding of different aspects of developing NLP models and techniques used to optimise performance.
+The goal of the project is to build an NMT GEC system based on transformer architecture extended with copying, such as in Zhao et al., while also gaining an understanding of different aspects of developing NLP models and techniques used to optimise performance.
 
 I will also implement a transformer from scratch and aim to match the performance of the library implementations.
 
@@ -44,7 +44,7 @@ The project will be considered successful if:
 
 1. The nmt + copying model has been implemented,
 
-2. The model achieves results that are close to the state of the art, evaluated qunatitatively (around 61 GLEU (on the JFELEG dataset), Zhao et al, 2019) and qualitatively.
+2. The performance of the model has been evaluated qunatitatively using a metric such as GLEU or $M^2$, and qualitatively.
 
 ## Timetable (milestones and deadlines)
 
