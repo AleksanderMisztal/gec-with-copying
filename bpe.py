@@ -26,3 +26,6 @@ def load_tokenizer(path='./tokenizer'):
   tokenizer = make_tokenizer()
   tokenizer.model = BPE.from_file(path + '/vocab.json', path + '/merges.txt')
   return tokenizer
+
+
+#tokenizer = bpe.train_tokenizer([s for xy in xys for s in xy])
