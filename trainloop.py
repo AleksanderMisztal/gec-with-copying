@@ -1,64 +1,103 @@
 import torch
-import bpe
 from model import RefTransformer
-from dataloader import DataLoader
+from dataloader import DataLoader, get_orig_corr_pairs
+from mytokenizer import PAD_IDX, to_token_idxs, tokenizer
+from utils import create_mask, get_tf_predictions
 
-PAD_IDX, BOS_IDX, EOS_IDX = 0, 1, 2 # TODO set to correct idxs
-special_symbols = ['<pad>', '<bos>', '<eos>']
-
-tokenizer = bpe.load_tokenizer()
-VOCAB_SIZE = tokenizer.get_vocab_size()
-EMB_SIZE = 512
-NHEAD = 8
-FFN_HID_DIM = 512
 BATCH_SIZE = 128
-NUM_ENCODER_LAYERS = 3
-NUM_DECODER_LAYERS = 3
-
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-transformer = RefTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, NHEAD, VOCAB_SIZE, VOCAB_SIZE, FFN_HID_DIM)
-
-transformer = transformer.to(DEVICE)
-
+transformer = RefTransformer(tokenizer.get_vocab_size())
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-optimizer = torch.optim.Adam(transformer.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9)
+optimizer = torch.optim.Adam(transformer.parameters(), lr=0.01)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.3, threshold=.1, verbose=True)
 
-train_dataloader = DataLoader(xys, BATCH_SIZE, PAD_IDX)
+xys = to_token_idxs(get_orig_corr_pairs(lim=80))
+
+xys_test = xys[:BATCH_SIZE]
+xys_train = xys[BATCH_SIZE:]
+
+test_dataloader = DataLoader(xys_test, BATCH_SIZE, PAD_IDX)
+train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
+
+def train_epoch(model, loss_fn, train_dataloader):
+  model.train()
+  losses = 0
+  steps = 0
+
+  for src, tgt in train_dataloader:
+    steps += 1
+    src = src.to(DEVICE)
+    tgt = tgt.to(DEVICE)
+
+    tgt_input = tgt[:-1, :]
+
+    tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
+
+    logits = model(src, tgt_input)#, tgt_mask, src_padding_mask, tgt_padding_mask)
+    optimizer.zero_grad()
+
+    tgt_out = tgt[1:, :]
+    loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+    loss.backward()
+
+    optimizer.step()
+    scheduler.step(loss.item())
+    losses += loss.item()
+    print(losses/steps)
+
+  return losses / steps
+
+def evaluate(model, loss_fn, test_dataloader):
+  model.eval()
+  losses = 0
+  steps = 0
+
+  for src, tgt in test_dataloader:
+    steps += 1
+    src = src.to(DEVICE)
+    tgt = tgt.to(DEVICE)
+
+    tgt_input = tgt[:-1, :]
+
+    tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
+
+    logits = model(src, tgt_input)
+
+    tgt_out = tgt[1:, :]
+    loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+
+    losses += loss.item()
+
+  return losses / steps
 
 
-def create_mask(src, tgt_in):
-  t_len = tgt_in.shape[1]
+transformer.load_state_dict(torch.load('./models/model.pt'))
+min_loss = evaluate(transformer, loss_fn, test_dataloader)
+print('min loss is:', min_loss)
+for i in range(50):
+  av_loss = train_epoch(transformer, loss_fn, train_dataloader)
+  eval_loss = evaluate(transformer, loss_fn, test_dataloader)
+  print(i, av_loss, eval_loss)
 
-  tgt_mask = torch.triu(torch.ones(t_len, t_len), diagonal=1) * float('-inf')
+  sps = xys_test[:4]
+  sps_pred = get_tf_predictions(transformer, sps, PAD_IDX)
+  sps_pred = tokenizer.decode_batch(sps_pred)
+  for i in range(1):
+    print(i)
+    sp = tokenizer.decode_batch(sps[i])
+    print(sp[0])
+    print(sp[1])
+    print(sps_pred[i])
+  if eval_loss < min_loss:
+    torch.save(transformer.state_dict(), './models/model.pt')
+    min_loss = eval_loss
+    print('saved!!')
 
-  src_padding_mask = (src == PAD_IDX) 
-  tgt_padding_mask = (tgt_in == PAD_IDX)
 
-  return tgt_mask, src_padding_mask, tgt_padding_mask
+# TODO pretrain the encoder on word prediction
+# TODO group into batches based on length
+# TODO train on google colab
+# TODO split into encoder - decoder
+# TODO use the masks properly
 
-
-def train_epoch(model, optimizer, loss_fn, train_dataloader):
-    model.train()
-    losses = 0
-
-    for src, tgt in train_dataloader:
-        src = src.to(DEVICE)
-        tgt = tgt.to(DEVICE)
-
-        tgt_input = tgt[:-1, :]
-
-        tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input)
-
-        logits = model(src, tgt_input, tgt_mask, src_padding_mask, tgt_padding_mask)
-
-        optimizer.zero_grad()
-
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        loss.backward()
-
-        optimizer.step()
-        losses += loss.item()
-
-    return losses / len(train_dataloader)
