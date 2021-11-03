@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import math
+from mytokenizer import PAD_IDX
+
 
 class PositionalEncoding(nn.Module):
   def __init__(self,
@@ -46,18 +48,23 @@ class EncoderClassifier(nn.Module):
     return out
 
 class RefTransformer(nn.Module):
-  def __init__(self, vocab_s, emb_s=256):
+  def __init__(self, vocab_s, num_layers=1, emb_s=256):
     super(RefTransformer, self).__init__()
 
     self.embedding = nn.Embedding(vocab_s, emb_s)
     self.pos_embedding = PositionalEncoding(emb_s, 0.1)
-    self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024)
+    self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers)
     self.generator = nn.Linear(emb_s, vocab_s)
 
   def forward(self, x, tgt):
     x_emb = self.pos_embedding(self.embedding(x))
     tgt_emb = self.pos_embedding(self.embedding(tgt))
-    y = self.transformer(x_emb, tgt_emb)
+
+    tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.shape[0])
+    src_padding_mask = (x == PAD_IDX).transpose(0, 1)
+    tgt_padding_mask = (tgt == PAD_IDX).transpose(0, 1)
+
+    y = self.transformer(x_emb, tgt_emb, tgt_mask=tgt_mask, src_key_padding_mask=src_padding_mask, tgt_key_padding_mask=tgt_padding_mask)
     y = self.generator(y)
     
     return y
