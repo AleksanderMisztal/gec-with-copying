@@ -4,12 +4,11 @@ from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 
-from dataloader import get_orig_and_corr
+from dataloader import load_datasets
 
 TRAIN_TOKENIZER = False
 TOKENIZER_PATH = './tokenizer'
-
-
+ 
 VOCAB_S = 30000
 
 tokenizer = Tokenizer(BPE())
@@ -22,8 +21,9 @@ def to_token_idxs(xys): return [(enc(x), [BOS_IDX]+enc(y)) for x, y in xys]
 if TRAIN_TOKENIZER:
   sentences = all
   trainer = BpeTrainer(vocab_size=VOCAB_S, show_progress=True, initial_alphabet=ByteLevel.alphabet())
-  orig, corr = get_orig_and_corr()
-  tokenizer.train_from_iterator(orig + corr, trainer)
+  train, _ = load_datasets()
+  sentences = [s for xy in train for s in xy]
+  tokenizer.train_from_iterator(sentences, trainer)
   tokenizer.model.save(tokenizer)
   print("Trained vocab size: {}".format(tokenizer.get_vocab_size()))
 else:

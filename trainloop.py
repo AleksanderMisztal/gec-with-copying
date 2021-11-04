@@ -1,28 +1,23 @@
 import random
 import torch
 from model import RefTransformer
-from dataloader import DataLoader, get_orig_corr_pairs
+from dataloader import DataLoader, load_datasets
 from mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from utils import get_tf_predictions
 from keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
 
-BATCH_SIZE = 128
-LEARNING_RATE = .001
-VALID_SIZE = 500
-MAX_SENTENCE_LEN = 80
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+BATCH_SIZE = 128
+TRAIN_S = 2048
+VAL_S = 256
+LEARNING_RATE = .01
 
-xys = to_token_idxs(get_orig_corr_pairs(lim=MAX_SENTENCE_LEN))
+xys_train, xys_val = load_datasets()
+xys_train = to_token_idxs(xys_train[:TRAIN_S])
+xys_val = to_token_idxs(xys_val[:VAL_S])
 
-xys_test = xys[:VALID_SIZE]
-xys_train = xys[VALID_SIZE:]
-
-test_dataloader = DataLoader(xys_test, BATCH_SIZE, PAD_IDX)
+test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
-
-print('Train size:', len(train_dataloader))
-print('Test size:', len(test_dataloader))
-
 
 transformer = RefTransformer(tokenizer.get_vocab_size())
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
@@ -50,13 +45,12 @@ def train_epoch(model, loss_fn, train_dataloader):
 
     optimizer.step()
     #scheduler.step(loss.item())
-    if steps == 1: losses = loss.item()
-    else: losses = .9*losses + .1 * loss.item()
-    print(f'Step {steps*BATCH_SIZE} / {len(train_dataloader)}. Train loss: {round(losses,3)}', end='\r')
+    losses += loss.item()
+    print(f'Step {steps*BATCH_SIZE} / {len(train_dataloader)}. Train loss: {round(losses/steps,3)}', end='\r')
 
-    if was_interrupted(): return losses
+    if was_interrupted(): return losses/steps
 
-  return losses
+  return losses/steps
 
 def evaluate(model, loss_fn, test_dataloader):
   model.eval()
@@ -84,7 +78,7 @@ def save_model():
   print('Saved!')
 
 MODEL_LOAD_NAME = 'modelsm'
-MODEL_SAVE_NAME = 'modelsm'
+MODEL_SAVE_NAME = 'model_xxs'
 IS_MODEL_LOADED = True
 
 cont = input(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}? (y/n) ').strip()
@@ -99,7 +93,7 @@ min_loss = evaluate(transformer, loss_fn, test_dataloader)
 print('Initial validation loss:', round(min_loss,3))
 
 def visualise_model():
-  sps = random.sample(xys_test, 4)
+  sps = random.sample(xys_val, 4)
   sps_pred = get_tf_predictions(transformer, sps, PAD_IDX)
   sps_pred = tokenizer.decode_batch(sps_pred)
   sp = tokenizer.decode_batch(sps[0])
@@ -141,9 +135,6 @@ for i in range(1, EPOCHS+1):
 
   if was_interrupted(): handle_training_interrupt()
 
-# TODO copy the data used by dataloader
-# TODO pretrain the encoder on word prediction
+# TODO use the masks properly
 # TODO group into batches based on length
 # TODO train on google colab
-# TODO split into encoder - decoder
-# TODO use the masks properly

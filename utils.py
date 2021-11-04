@@ -1,5 +1,6 @@
 import random
 import torch
+import json
 
 def unzip(xys):
   xs = [x for x, y in xys]
@@ -38,3 +39,6 @@ def noise(orig: 'list[int]', vocab_s: int):
 def count_params(model):
   return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+def read_json(path):
+  with open(path, 'r') as f:
+    return json.load(f)
