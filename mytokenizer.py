@@ -16,7 +16,7 @@ tokenizer.pre_tokenizer = ByteLevel()
 tokenizer.decoder = ByteLevelDecoder()
 
 def enc(x): return tokenizer.encode(x).ids
-def to_token_idxs(xys): return [(enc(x), [BOS_IDX]+enc(y)) for x, y in xys]
+def to_token_idxs(xys): return [(enc(x), [BOS_IDX]+enc(y)+[EOS_IDX]) for x, y in xys]
 
 if TRAIN_TOKENIZER:
   sentences = all

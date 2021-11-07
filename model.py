@@ -69,9 +69,12 @@ class RefTransformer(nn.Module):
     
     return y
   
-  # def encode(self, src, src_mask):
-  #   return self.transformer.encoder(self.positional_encoding(self.src_tok_emb(src)), src_mask)
+  def encode(self, src):
+    src_padding_mask = (src == PAD_IDX).transpose(0, 1)
+    emb = self.pos_embedding(self.embedding(src))
+    return self.transformer.encoder(emb)
 
-  # def decode(self, tgt, memory, tgt_mask):
-  #   return self.transformer.decoder(self.positional_encoding(self.tgt_tok_emb(tgt)), memory, tgt_mask)
+  def decode(self, tgt, memory):
+    emb = self.pos_embedding(self.embedding(tgt))
+    return self.transformer.decoder(emb, memory)
   

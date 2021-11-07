@@ -18,15 +18,17 @@ class DataLoader:
 
 	def __iter__(self):
 		self.iter = 0
+		bs = self.batch_size
 		random.shuffle(self.xys)
+		self.xys.sort(key=lambda xy: len(xy[0]))
+		self.batches = [self.xys[i*bs:(i+1)*bs] for i in range(len(self.xys)//bs)]
+		random.shuffle(self.batches)
 		return self
 
 	def __next__(self):
-		if self.iter + self.batch_size <= len(self.xys):
-			batch = self.xys[self.iter:self.iter + self.batch_size]
-			xs, ys = unzip(batch)
-			self.iter += self.batch_size
+		if self.iter < len(self.batches):
+			xs, ys = unzip(self.batches[self.iter])
+			self.iter += 1
 			return to_padded_tensor(xs, self.pad_token).T, to_padded_tensor(ys, self.pad_token).T
 		else:
 			raise StopIteration
-

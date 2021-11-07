@@ -12,14 +12,6 @@ def to_padded_tensor(xss, pad_token):
 	padded = [xs + [pad_token for _ in range(w - len(xs))] for xs in xss]
 	return torch.tensor(padded)
 
-def get_tf_predictions(model, sentence_pairs, pad):
-  xs, ys = unzip(sentence_pairs)
-  src, tgt = to_padded_tensor(xs, pad).T, to_padded_tensor(ys, pad).T
-  out = model(src, tgt[:-1, :])
-  words = torch.argmax(out, dim=2)
-  idxs = words.T.tolist()
-  return idxs
-
 def noise(orig: 'list[int]', vocab_s: int):
   x = orig.copy()
   y = [0 for _ in x]
