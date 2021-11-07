@@ -157,7 +157,4 @@ for i in range(1, EPOCHS+1):
   save_model()
   if was_interrupted(): handle_training_interrupt()
 
-# TODO run an errant hello world example 
-# TODO write the orig, corr, pred triplets into file
-# TODO evaluate the produced translations with errant
 # TODO implement and evaluate beam search

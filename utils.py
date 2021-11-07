@@ -34,3 +34,7 @@ def count_params(model):
 def read_json(path):
   with open(path, 'r') as f:
     return json.load(f)
+
+def writelines(path, lines):
+  with open(path, "w") as f:
+    f.write('\n'.join(lines))

@@ -1,7 +1,9 @@
 import torch
-from dataloader import *
+import random
+from dataloader import load_datasets
 from model import RefTransformer
-from mytokenizer import BOS_IDX, EOS_IDX, to_token_idxs, tokenizer
+from mytokenizer import BOS_IDX, EOS_IDX, tokenizer
+from utils import writelines
 
 
 model = RefTransformer(tokenizer.get_vocab_size())
@@ -22,19 +24,6 @@ def greedy_decode(model, src, max_len):
     if next_word == EOS_IDX or next_word==13: break
   return ys
 
-print(tokenizer.encode('a.').ids)
-_, xys_val = load_datasets()
-random.shuffle(xys_val)
-orig, corr = xys_val[0]
-xys_val = to_token_idxs(xys_val)
-src, tgt = xys_val[0]
-
-idxs = greedy_decode(model, torch.tensor([src]).T, 100)
-pred = tokenizer.decode(idxs.T[0].tolist()).strip()
-
-print(orig)
-print(corr)
-print(pred)
 
 def correct_sentence(sentence):
   src = tokenizer.encode(sentence).ids
@@ -43,5 +32,22 @@ def correct_sentence(sentence):
   return pred
 
 
-sentence = 'It is important to consider the long term effects.'
-print(correct_sentence(sentence))
+_, xys_val = load_datasets()
+N_SENTENCES = 24
+USE_ALL = False
+if USE_ALL:
+  sample = xys_val
+else:
+  if N_SENTENCES > len(xys_val):
+    print(f"Specified number = {N_SENTENCES} > {len(xys_val)} = len of val set")
+    exit()
+  sample = random.sample(xys_val, N_SENTENCES)
+preds = []
+for i,(x,y) in enumerate(sample):
+  print(f"{i+1}/{N_SENTENCES}", end='\r')
+  pred = correct_sentence(x)
+  preds.append([x,y,pred])
+
+writelines("./out/orig.txt", [x for x,y,p in preds])
+writelines("./out/corr.txt", [y for x,y,p in preds])
+writelines("./out/pred.txt", [p for x,y,p in preds])
