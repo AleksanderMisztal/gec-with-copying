@@ -21,3 +21,25 @@ def read_json(path):
 def writelines(path, lines):
   with open(path, "w") as f:
     f.write('\n'.join(lines))
+
+
+from heapq import heapify, heappush, heappushpop
+
+class MaxHeap():
+  def __init__(self, top_n):
+    self.h = []
+    self.length = top_n
+    heapify( self.h)
+      
+  def add(self, element):
+    if len(self.h) < self.length:
+      heappush(self.h, element)
+    else:
+      heappushpop(self.h, element)
+  
+  def addAll(self, elems):
+    for elem in elems:
+      self.add(elem)
+
+  def getTop(self):
+    return sorted(self.h, reverse=True)
