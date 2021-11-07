@@ -5,22 +5,26 @@ from model import RefTransformer
 from mytokenizer import BOS_IDX, EOS_IDX, tokenizer
 from utils import MaxHeap, writelines
 
+logSoftmax = torch.nn.LogSoftmax(dim=1)
+
 def greedy_decode(model, sentence, max_len=100):
   src = tokenizer.encode(sentence).ids
   src = torch.tensor([src]).T
   memory = model.encode(src)
   ys = torch.tensor([[BOS_IDX]])
+  prob = 0
   for i in range(max_len):
     out = model.decode(ys, memory)
     out = out.transpose(0, 1)
-    prob = model.generator(out[:, -1])
-    _, next_word = torch.max(prob, dim=1)
-    next_word = next_word.item()
-    ys = torch.cat([ys, torch.tensor([[next_word]])], dim=0)
-    if next_word == EOS_IDX or next_word==13: break
+    probs = logSoftmax(model.generator(out[:, -1]))
+    n_logprob, n_word = torch.max(probs, dim=1)
+    n_word = n_word.item()
+    prob += n_logprob.item()
+    ys = torch.cat([ys, torch.tensor([[n_word]])], dim=0)
+    if n_word == EOS_IDX or n_word==13: break
   
   pred = tokenizer.decode(ys.T[0].tolist()).strip()
-  return pred
+  return prob, pred
 
 def beam_search_decode(model, sentence, n_beams=12, n_results=3):
   src = tokenizer.encode(sentence).ids
@@ -34,7 +38,7 @@ def beam_search_decode(model, sentence, n_beams=12, n_results=3):
     for logp,ys in beams:
       out = model.decode(ys, memory)
       out = out.transpose(0, 1)
-      logprobs = torch.nn.LogSoftmax(dim=1)(model.generator(out[:, -1]))
+      logprobs = logSoftmax(model.generator(out[:, -1]))
       t_logprobs, t_idxs = torch.topk(logprobs, n_beams)
       t_logprobs, t_idxs = t_logprobs[0].tolist(), t_idxs[0].tolist()
       for lp, idx in zip(t_logprobs,t_idxs):
@@ -48,22 +52,24 @@ def beam_search_decode(model, sentence, n_beams=12, n_results=3):
   return preds
 
 
-MODEL_LOAD_NAME = 'model_eos'
+MODEL_LOAD_NAME = 'transformer/model_eos'
 model = RefTransformer(tokenizer.get_vocab_size())
-model.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
+model.load_state_dict(torch.load('../models/' + MODEL_LOAD_NAME + '.pt'))
 
-_, xys_val = load_datasets()
+_, xys_val = load_datasets('../data/')
 
-for x,y in xys_val[:1]:
-  preds = beam_search_decode(model, x)
+for x,y in random.sample(xys_val,1):
   print(x)
   print(y)
-  for lp, pred in preds:
-    print(round(lp,3), pred)
+  pred, logprop = greedy_decode(model, x)
+  print(round(pred,3), logprop)
+  preds = beam_search_decode(model, x)
+  for lp, pr in preds:
+    print(round(lp,3), pr)
   print()
 
 N_SENTENCES = 24
-USE_ALL = False
+USE_ALL = True
 if USE_ALL:
   sample = xys_val
 else:
@@ -73,10 +79,10 @@ else:
   sample = random.sample(xys_val, N_SENTENCES)
 preds = []
 for i,(x,y) in enumerate(sample):
-  print(f"{i+1}/{N_SENTENCES}", end='\r')
-  pred = greedy_decode(model, x)
+  print(f"{i+1}/{len(sample)}", end='\r')
+  prob, pred = beam_search_decode(model, x, n_results=1)[0]
   preds.append([x,y,pred])
 
-writelines("./out/orig.txt", [x for x,y,p in preds])
-writelines("./out/corr.txt", [y for x,y,p in preds])
-writelines("./out/pred.txt", [p for x,y,p in preds])
+writelines("../out/orig.txt", [x for x,y,p in preds])
+writelines("../out/corr.txt", [y for x,y,p in preds])
+writelines("../out/pred.txt", [p for x,y,p in preds])

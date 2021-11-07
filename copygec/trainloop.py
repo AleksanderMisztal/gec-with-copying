@@ -6,7 +6,7 @@ from mytokenizer import BOS_IDX, EOS_IDX, PAD_IDX, to_token_idxs, tokenizer
 from keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
 
 
-xys_train, xys_val = load_datasets()
+xys_train, xys_val = load_datasets('../data/')
 xys_train = to_token_idxs(xys_train)
 xys_val = to_token_idxs(xys_val)
 #xys_train = [[x,y] for x,y in xys_train if len(x) < 40]
@@ -73,11 +73,11 @@ def evaluate(model, loss_fn, test_dataloader):
   return losses / steps
 
 def save_model():
-  torch.save(transformer.state_dict(), './models/' + MODEL_SAVE_NAME + '.pt')
+  torch.save(transformer.state_dict(), '../models/' + MODEL_SAVE_NAME + '.pt')
   print('Saved!')
 
-MODEL_LOAD_NAME = 'model'
-MODEL_SAVE_NAME = 'model_eos'
+MODEL_LOAD_NAME = 'transformer/model'
+MODEL_SAVE_NAME = 'transformer/model_eos'
 IS_MODEL_LOADED = True
 
 def confirm(message):
@@ -89,7 +89,7 @@ confirm(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}?')
 if IS_MODEL_LOADED and MODEL_LOAD_NAME != MODEL_SAVE_NAME:
   confirm('Are you sure you want to load from a different file?')
 
-if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
+if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('../models/' + MODEL_LOAD_NAME + '.pt'))
 else:
   confirm('Are you sure you want to initialize a new model?')  
 min_loss = evaluate(transformer, loss_fn, test_dataloader)
@@ -157,4 +157,5 @@ for i in range(1, EPOCHS+1):
   save_model()
   if was_interrupted(): handle_training_interrupt()
 
-# TODO implement and evaluate beam search
+# TODO evaluate beam search
+# TODO test inference speed varying n_layers, batching, decoding, etc. 

@@ -70,11 +70,13 @@ class RefTransformer(nn.Module):
     return y
   
   def encode(self, src):
+    # ! This will only work properly for batch size 1
     src_padding_mask = (src == PAD_IDX).transpose(0, 1)
     emb = self.pos_embedding(self.embedding(src))
     return self.transformer.encoder(emb)
 
   def decode(self, tgt, memory):
+    # ! This only works for batch size 1 and no teacher forcing
     emb = self.pos_embedding(self.embedding(tgt))
     return self.transformer.decoder(emb, memory)
   

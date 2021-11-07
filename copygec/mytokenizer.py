@@ -7,7 +7,7 @@ from tokenizers.trainers import BpeTrainer
 from dataloader import load_datasets
 
 TRAIN_TOKENIZER = False
-TOKENIZER_PATH = './tokenizer'
+TOKENIZER_PATH = '../models/tokenizer'
  
 VOCAB_S = 30000
 
@@ -21,7 +21,7 @@ def to_token_idxs(xys): return [(enc(x), [BOS_IDX]+enc(y)+[EOS_IDX]) for x, y in
 if TRAIN_TOKENIZER:
   sentences = all
   trainer = BpeTrainer(vocab_size=VOCAB_S, show_progress=True, initial_alphabet=ByteLevel.alphabet())
-  train, _ = load_datasets()
+  train, _ = load_datasets('../data/')
   sentences = [s for xy in train for s in xy]
   tokenizer.train_from_iterator(sentences, trainer)
   tokenizer.model.save(tokenizer)

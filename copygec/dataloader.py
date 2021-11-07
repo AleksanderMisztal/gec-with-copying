@@ -1,10 +1,9 @@
 import random
 from utils import read_json, to_padded_tensor, unzip
 
-DATA_PATH = './data/'
-def load_datasets():
-	train = read_json(DATA_PATH + 'train.json')
-	val = read_json(DATA_PATH + 'val.json')
+def load_datasets(path):
+	train = read_json(path + 'train.json')
+	val = read_json(path + 'val.json')
 	return train, val
 
 class DataLoader:
