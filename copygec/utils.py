@@ -1,5 +1,6 @@
 import torch
 import json
+import random
 
 def unzip(xys):
   xs = [x for x, y in xys]
@@ -22,6 +23,21 @@ def writelines(path, lines):
   with open(path, "w") as f:
     f.write('\n'.join(lines))
 
+def noise(orig: 'list[int]', vocab_s: int):
+  x = orig.copy()
+  y = [0 for _ in x]
+  i = 0
+  while i < len(x)-1:
+    a = random.random()
+    if a < .1:
+      y[i] = y[i+1] = 1
+      x[i], x[i+1] = x[i+1], x[i]
+      i+=1
+    elif a < .2:
+      x[i] = random.randint(0, vocab_s-1)
+      y[i] = 2
+    i+=1
+  return x, y
 
 from heapq import heapify, heappush, heappushpop
 

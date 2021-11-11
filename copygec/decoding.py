@@ -1,11 +1,17 @@
 import torch
-import random
-from dataloader import load_datasets
-from model import RefTransformer
-from mytokenizer import BOS_IDX, EOS_IDX, tokenizer
-from utils import MaxHeap, writelines
+from .mytokenizer import BOS_IDX, EOS_IDX, tokenizer
+from .utils import MaxHeap
 
 logSoftmax = torch.nn.LogSoftmax(dim=1)
+
+def get_tf_predictions(model, src: 'list[int]', tgt: 'list[int]'):
+  src = torch.tensor([src]).T
+  tgt = torch.tensor([tgt]).T
+  out = model(src, tgt[:-1, :])
+  words = torch.argmax(out, dim=2)
+  idxs = words.T.tolist()[0]
+  pred = tokenizer.decode(idxs)
+  return pred
 
 def greedy_decode(model, sentence, max_len=100):
   src = tokenizer.encode(sentence).ids
@@ -50,39 +56,3 @@ def beam_search_decode(model, sentence, n_beams=12, n_results=3):
   
   preds = [(lp,tokenizer.decode(idxs.T[0].tolist()).strip()) for lp, idxs in top_sentences.getTop()]
   return preds
-
-
-MODEL_LOAD_NAME = 'transformer/model_eos'
-model = RefTransformer(tokenizer.get_vocab_size())
-model.load_state_dict(torch.load('../models/' + MODEL_LOAD_NAME + '.pt'))
-
-_, xys_val = load_datasets('../data/')
-
-for x,y in random.sample(xys_val,1):
-  print(x)
-  print(y)
-  pred, logprop = greedy_decode(model, x)
-  print(round(pred,3), logprop)
-  preds = beam_search_decode(model, x)
-  for lp, pr in preds:
-    print(round(lp,3), pr)
-  print()
-
-N_SENTENCES = 24
-USE_ALL = True
-if USE_ALL:
-  sample = xys_val
-else:
-  if N_SENTENCES > len(xys_val):
-    print(f"Specified number = {N_SENTENCES} > {len(xys_val)} = len of val set")
-    exit()
-  sample = random.sample(xys_val, N_SENTENCES)
-preds = []
-for i,(x,y) in enumerate(sample):
-  print(f"{i+1}/{len(sample)}", end='\r')
-  prob, pred = beam_search_decode(model, x, n_results=1)[0]
-  preds.append([x,y,pred])
-
-writelines("../out/orig.txt", [x for x,y,p in preds])
-writelines("../out/corr.txt", [y for x,y,p in preds])
-writelines("../out/pred.txt", [p for x,y,p in preds])

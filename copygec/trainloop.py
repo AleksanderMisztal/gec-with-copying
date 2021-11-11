@@ -1,15 +1,15 @@
 import random
 import torch
-from model import RefTransformer
-from dataloader import DataLoader, load_datasets
-from mytokenizer import BOS_IDX, EOS_IDX, PAD_IDX, to_token_idxs, tokenizer
-from keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
+from .decoding import get_tf_predictions
+from .model import RefTransformer
+from .dataloader import DataLoader, load_datasets
+from .mytokenizer import PAD_IDX, to_token_idxs, tokenizer
+from .keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
 
 
-xys_train, xys_val = load_datasets('../data/')
+xys_train, xys_val = load_datasets('./data/')
 xys_train = to_token_idxs(xys_train)
 xys_val = to_token_idxs(xys_val)
-#xys_train = [[x,y] for x,y in xys_train if len(x) < 40]
 print(len(xys_train), len(xys_val))
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -73,7 +73,7 @@ def evaluate(model, loss_fn, test_dataloader):
   return losses / steps
 
 def save_model():
-  torch.save(transformer.state_dict(), '../models/' + MODEL_SAVE_NAME + '.pt')
+  torch.save(transformer.state_dict(), './models/' + MODEL_SAVE_NAME + '.pt')
   print('Saved!')
 
 MODEL_LOAD_NAME = 'transformer/model'
@@ -89,20 +89,11 @@ confirm(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}?')
 if IS_MODEL_LOADED and MODEL_LOAD_NAME != MODEL_SAVE_NAME:
   confirm('Are you sure you want to load from a different file?')
 
-if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('../models/' + MODEL_LOAD_NAME + '.pt'))
+if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
 else:
   confirm('Are you sure you want to initialize a new model?')  
 min_loss = evaluate(transformer, loss_fn, test_dataloader)
 print('Initial validation loss:', round(min_loss,3))
-
-def get_tf_predictions(model, src: 'list[int]', tgt: 'list[int]'):
-  src = torch.tensor([src]).T
-  tgt = torch.tensor([tgt]).T
-  out = model(src, tgt[:-1, :])
-  words = torch.argmax(out, dim=2)
-  idxs = words.T.tolist()[0]
-  pred = tokenizer.decode(idxs)
-  return pred
 
 def visualise_model(n: int):
   sps = random.sample(xys_val, n)
@@ -112,19 +103,6 @@ def visualise_model(n: int):
     print(x)
     print(y)
     print(y_pred)
-
-def greedy_decode(model, src, max_len):
-  ys = torch.tensor([[BOS_IDX]])
-  memory = model.encode(src)
-  for i in range(max_len):
-    out = model.decode(memory)
-    out = out.transpose(0, 1)
-    prob = model.generator(out[:, -1])
-    _, next_word = torch.max(prob, dim=1)
-    next_word = next_word.item()
-    ys = torch.cat(ys, torch.tensor([[next_word]]))
-    if next_word == EOS_IDX: break
-  return ys
 
 def handle_training_interrupt():
   action = input('c -> continue\nh -> / 10 learning rate\nx -> 10x learning rate\nq -> quit\ns -> save\nv -> visualize\n').strip()
@@ -157,5 +135,8 @@ for i in range(1, EPOCHS+1):
   save_model()
   if was_interrupted(): handle_training_interrupt()
 
-# TODO evaluate beam search
-# TODO test inference speed varying n_layers, batching, decoding, etc. 
+# TODO Obtain access to HPC
+# TODO Evaluate sythetic data pretraining
+# TODO Evaluate beam search
+# TODO Speed up beam search (batching?)
+# TODO Test inference speed varying n_layers, batching, decoding, etc. 
