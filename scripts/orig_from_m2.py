@@ -1,8 +1,8 @@
 import argparse
 
 def main(args):
-	m2 = open(args.m2_file).read().strip().split("\n\n")
-	out = open(args.out, "w")
+	m2 = open(args.m2_file, encoding='utf-8').read().strip().split("\n\n")
+	out = open(args.out, "w", encoding='utf-8')
 	
 	for sent in m2:
 		sent = sent.split('\n')[0]

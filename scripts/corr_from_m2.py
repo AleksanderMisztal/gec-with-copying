@@ -2,8 +2,8 @@ import argparse
 
 # Apply the edits of a single annotator to generate the corrected sentences.
 def main(args):
-	m2 = open(args.m2_file).read().strip().split("\n\n")
-	out = open(args.out, "w")
+	m2 = open(args.m2_file, encoding='utf').read().strip().split("\n\n")
+	out = open(args.out, "w", encoding="utf-8")
 	# Do not apply edits with these error types
 	skip = {"noop", "UNK", "Um"}
 	

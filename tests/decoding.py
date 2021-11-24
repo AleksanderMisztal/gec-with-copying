@@ -4,7 +4,6 @@ from copygec.dataloader import load_datasets
 from copygec.decoding import beam_search_decode, greedy_decode
 from copygec.model import RefTransformer
 from copygec.mytokenizer import tokenizer
-
 from copygec.utils import writelines
 
 

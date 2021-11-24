@@ -1,21 +1,16 @@
 import json
-import random
 
-orig1 = open('./data/conll.orig.txt').readlines()
-corr1 = open('./data/conll.corr.txt').readlines()
+train_orig = open('./data/train.orig.txt', encoding='utf-8').readlines()
+train_corr = open('./data/train.corr.txt', encoding='utf-8').readlines()
 
-orig2 = open('./data/nucle.orig.txt').readlines()
-corr2 = open('./data/nucle.corr.txt').readlines()
+dev_orig = open('./data/dev.orig.txt', encoding='utf-8').readlines()
+dev_corr = open('./data/dev.corr.txt', encoding='utf-8').readlines()
 
-orig = [s.strip() for s in orig1 + orig2]
-corr = [s.strip() for s in corr1 + corr2]
+xys_train = [(x.strip(), y.strip()) for x, y in zip(train_orig, train_corr) if x != y]
+xys_dev = [(x.strip(), y.strip()) for x, y in zip(dev_orig, dev_corr) if x != y]
 
-xys = list(zip(orig, corr))
-xys = [(x, y) for x, y in xys if x != y]
-
-random.shuffle(xys)
 
 with open('./data/train.json', 'w', encoding='utf-8') as f:
-    json.dump(xys[1024:], f, ensure_ascii=False, indent=4)
+    json.dump(xys_train, f, ensure_ascii=False, indent=4)
 with open('./data/val.json', 'w', encoding='utf-8') as f:
-    json.dump(xys[:1024], f, ensure_ascii=False, indent=4)
+    json.dump(xys_dev, f, ensure_ascii=False, indent=4)

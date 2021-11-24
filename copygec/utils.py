@@ -16,7 +16,7 @@ def count_params(model):
   return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def read_json(path):
-  with open(path, 'r') as f:
+  with open(path, 'r', encoding='utf-8') as f:
     return json.load(f)
 
 def writelines(path, lines):
