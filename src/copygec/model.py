@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from .mytokenizer import PAD_IDX
+from mytokenizer import PAD_IDX
 
 
 class PositionalEncoding(nn.Module):
