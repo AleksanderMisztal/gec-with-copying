@@ -5,7 +5,7 @@ from copygec.model import RefTransformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
-
+from pathlib import Path
 
 xys_train, xys_val = load_datasets('./data/')
 xys_train = to_token_idxs(xys_train)
@@ -76,6 +76,7 @@ def save_model():
   torch.save(transformer.state_dict(), './models/' + MODEL_SAVE_NAME + '.pt')
   print('Saved!')
 
+Path('./models/transformer').mkdir(parents=True, exist_ok=True)
 MODEL_LOAD_NAME = 'transformer/model'
 MODEL_SAVE_NAME = 'transformer/model_wi'
 IS_MODEL_LOADED = False
@@ -130,10 +131,12 @@ EPOCHS = 1000
 prevent_interrupts()
 for i in range(1, EPOCHS+1):
   train_loss = train_epoch(transformer, loss_fn, train_dataloader, True)
+  if was_interrupted(): 
+    handle_training_interrupt()
+    continue
   eval_loss = evaluate(transformer, loss_fn, test_dataloader)
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
-  if was_interrupted(): handle_training_interrupt()
 
 # TODO Benchmark the HPC GPUs
 # TODO Will model eval give better results? (dropout)
