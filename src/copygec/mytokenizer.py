@@ -5,7 +5,7 @@ from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 from pathlib import Path
 
-from dataloader import load_datasets
+from src.copygec.dataloader import load_datasets
 
 TRAIN_TOKENIZER = False
 TOKENIZER_PATH = './models/tokenizer'

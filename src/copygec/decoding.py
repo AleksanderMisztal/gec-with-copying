@@ -1,6 +1,6 @@
 import torch
-from mytokenizer import BOS_IDX, EOS_IDX, tokenizer
-from utils import MaxHeap
+from src.copygec.mytokenizer import BOS_IDX, EOS_IDX, tokenizer
+from src.copygec.utils import MaxHeap
 
 logSoftmax = torch.nn.LogSoftmax(dim=1)
 

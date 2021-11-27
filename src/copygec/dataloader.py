@@ -1,5 +1,5 @@
 import random
-from utils import read_json, to_padded_tensor, unzip
+from src.copygec.utils import read_json, to_padded_tensor, unzip
 
 def load_datasets(path):
 	train = read_json(path + 'train.json')
