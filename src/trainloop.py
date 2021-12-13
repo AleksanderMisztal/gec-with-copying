@@ -18,7 +18,7 @@ BATCH_SIZE = 128
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
 test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 
-transformer = RefTransformer(tokenizer.get_vocab_size())
+transformer = RefTransformer(tokenizer.get_vocab_size()).to(DEVICE)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(transformer.parameters(), lr=LEARNING_RATE)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.3, threshold=.01, verbose=True, patience=10)
@@ -51,7 +51,7 @@ def train_epoch(model, loss_fn, train_dataloader, verbose=False):
   scheduler.step(losses/steps)
   return losses/steps
 
-def evaluate(model, loss_fn, test_dataloader):
+def evaluate(model, loss_fn, test_dataloader, lim=-1):
   model.eval()
   losses = 0
   steps = 0
@@ -69,6 +69,7 @@ def evaluate(model, loss_fn, test_dataloader):
     loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
 
     losses += loss.item()
+    if lim > 0 and steps >= lim: break
 
   return losses / steps
 
@@ -93,7 +94,8 @@ if IS_MODEL_LOADED and MODEL_LOAD_NAME != MODEL_SAVE_NAME:
 if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
 else:
   confirm('Are you sure you want to initialize a new model?')  
-min_loss = evaluate(transformer, loss_fn, test_dataloader)
+
+min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
 print('Initial validation loss:', round(min_loss,3))
 
 def visualise_model(n: int):
@@ -134,10 +136,11 @@ for i in range(1, EPOCHS+1):
   if was_interrupted(): 
     handle_training_interrupt()
     continue
-  eval_loss = evaluate(transformer, loss_fn, test_dataloader)
+  eval_loss = evaluate(transformer, loss_fn, test_dataloader, lim=3)
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
+# TODO Run on the HPC
 # TODO Benchmark the HPC GPUs
 # TODO Will model eval give better results? (dropout)
 # TODO Evaluate sythetic data pretraining
