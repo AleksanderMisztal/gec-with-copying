@@ -18,7 +18,8 @@ BATCH_SIZE = 128
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
 test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 
-transformer = RefTransformer(tokenizer.get_vocab_size()).to(DEVICE)
+transformer = RefTransformer(tokenizer.get_vocab_size(), device=DEVICE)
+print(next(transformer.parameters()).is_cuda)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(transformer.parameters(), lr=LEARNING_RATE)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.3, threshold=.01, verbose=True, patience=10)
@@ -86,14 +87,14 @@ def confirm(message):
   cont = input(message + ' (y/n) ').strip()
   if cont != 'y': exit()
 
-confirm(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}?')
+#confirm(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}?')
 
 if IS_MODEL_LOADED and MODEL_LOAD_NAME != MODEL_SAVE_NAME:
-  confirm('Are you sure you want to load from a different file?')
+  pass#confirm('Are you sure you want to load from a different file?')
 
-if IS_MODEL_LOADED: transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
+if IS_MODEL_LOADED: pass#transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
 else:
-  confirm('Are you sure you want to initialize a new model?')  
+  pass#confirm('Are you sure you want to initialize a new model?')
 
 min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
 print('Initial validation loss:', round(min_loss,3))
@@ -129,11 +130,11 @@ def handle_training_interrupt():
     visualise_model(4)
   interrupt_handled()
 
-EPOCHS = 1000
+EPOCHS = 5
 prevent_interrupts()
 for i in range(1, EPOCHS+1):
   train_loss = train_epoch(transformer, loss_fn, train_dataloader, True)
-  if was_interrupted(): 
+  if was_interrupted():
     handle_training_interrupt()
     continue
   eval_loss = evaluate(transformer, loss_fn, test_dataloader, lim=3)

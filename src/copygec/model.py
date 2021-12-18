@@ -48,19 +48,20 @@ class EncoderClassifier(nn.Module):
     return out
 
 class RefTransformer(nn.Module):
-  def __init__(self, vocab_s, num_layers=1, emb_s=256):
+  def __init__(self, vocab_s, num_layers=1, emb_s=256, device=None):
     super(RefTransformer, self).__init__()
-
-    self.embedding = nn.Embedding(vocab_s, emb_s)
-    self.pos_embedding = PositionalEncoding(emb_s, 0.1)
-    self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers)
-    self.generator = nn.Linear(emb_s, vocab_s)
+    if device is None: device = torch.device('cpu')
+    self.embedding = nn.Embedding(vocab_s, emb_s).to(device)
+    self.pos_embedding = PositionalEncoding(emb_s, 0.1).to(device)
+    self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers).to(device)
+    self.generator = nn.Linear(emb_s, vocab_s).to(device)
 
   def forward(self, x, tgt):
     x_emb = self.pos_embedding(self.embedding(x))
     tgt_emb = self.pos_embedding(self.embedding(tgt))
 
-    tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.shape[0])
+    sz = tgt.shape[0]
+    tgt_mask = torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1)
     src_padding_mask = (x == PAD_IDX).transpose(0, 1)
     tgt_padding_mask = (tgt == PAD_IDX).transpose(0, 1)
 
