@@ -1,10 +1,8 @@
 import os
-import random
 import torch
 from pathlib import Path
 from argparse import ArgumentParser
 
-from copygec.decoding import get_tf_predictions
 from copygec.model import RefTransformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
@@ -20,7 +18,7 @@ parser.add_argument("--sn", "--savename", dest="savename",
 args = parser.parse_args()
 
 IS_MODEL_LOADED = args.loadname is not None
-MODEL_LOAD_PATH = './models/transformer/' + args.loadname + '.pt'
+if IS_MODEL_LOADED: MODEL_LOAD_PATH = './models/transformer/' + args.loadname + '.pt'
 MODEL_SAVE_PATH = './models/transformer/' + args.savename + '.pt'
 
 print(IS_MODEL_LOADED, MODEL_LOAD_PATH, MODEL_SAVE_PATH)
@@ -105,15 +103,6 @@ def save_model():
 min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
 print('Initial validation loss:', round(min_loss,3))
 
-def visualise_model(n: int):
-  sps = random.sample(xys_val, n)
-  preds = [(*tokenizer.decode_batch(sp), get_tf_predictions(transformer, *sp)) for sp in sps]
-  preds = [[s.strip() for s in xyp] for xyp in preds]
-  for x, y, y_pred in preds:
-    print(x)
-    print(y)
-    print(y_pred)
-
 EPOCHS = 5
 prevent_interrupts()
 for i in range(1, EPOCHS+1):
@@ -126,6 +115,7 @@ for i in range(1, EPOCHS+1):
   save_model()
 
 
+# TODO fix all to be on the same device
 # TODO Run the model on HPC
 # TODO Faster decoding
 
