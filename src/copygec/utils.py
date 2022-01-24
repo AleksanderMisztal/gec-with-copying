@@ -20,7 +20,7 @@ def read_json(path):
     return json.load(f)
 
 def writelines(path, lines):
-  with open(path, "w") as f:
+  with open(path, "w", encoding='utf-8') as f:
     f.write('\n'.join(lines))
 
 def noise(orig: 'list[int]', vocab_s: int):

@@ -18,19 +18,19 @@ def greedy_decode(model, sentence, max_len=100):
   src = torch.tensor([src]).T
   memory = model.encode(src)
   ys = torch.tensor([[BOS_IDX]])
-  prob = 0
+  logprob = 0
   for i in range(max_len):
     out = model.decode(ys, memory)
     out = out.transpose(0, 1)
     probs = logSoftmax(model.generator(out[:, -1]))
     n_logprob, n_word = torch.max(probs, dim=1)
     n_word = n_word.item()
-    prob += n_logprob.item()
+    logprob += n_logprob.item()
     ys = torch.cat([ys, torch.tensor([[n_word]])], dim=0)
     if n_word == EOS_IDX or n_word==13: break
   
   pred = tokenizer.decode(ys.T[0].tolist()).strip()
-  return prob, pred
+  return logprob, pred
 
 def beam_search_decode(model, sentence, n_beams=12, n_results=3):
   src = tokenizer.encode(sentence).ids

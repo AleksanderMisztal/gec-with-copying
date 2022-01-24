@@ -1,16 +1,37 @@
+import os
 import random
 import torch
+from pathlib import Path
+from argparse import ArgumentParser
+
 from copygec.decoding import get_tf_predictions
 from copygec.model import RefTransformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
-from copygec.keyinterrupt import prevent_interrupts, was_interrupted, interrupt_handled
-from pathlib import Path
+from copygec.keyinterrupt import prevent_interrupts, was_interrupted
+
+LOCAL_DEV = os.environ['GEC_ENV'] != "hpc"
+
+parser = ArgumentParser()
+parser.add_argument("--ln", "--loadname", dest="loadname",
+                    help="Load model with this name")
+parser.add_argument("--sn", "--savename", dest="savename",
+                    help="Save with this name", required=True)
+args = parser.parse_args()
+
+IS_MODEL_LOADED = args.loadname is not None
+MODEL_LOAD_PATH = './models/transformer/' + args.loadname + '.pt'
+MODEL_SAVE_PATH = './models/transformer/' + args.savename + '.pt'
+
+print(IS_MODEL_LOADED, MODEL_LOAD_PATH, MODEL_SAVE_PATH)
+if not Path(MODEL_LOAD_PATH).exists(): 
+  print('Attmepting to load a model that does not exist!')
+  exit()
 
 xys_train, xys_val = load_datasets('./data/')
 xys_train = to_token_idxs(xys_train)
 xys_val = to_token_idxs(xys_val)
-print(len(xys_train), len(xys_val))
+print("Train / val set sizes:", len(xys_train), len(xys_val))
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LEARNING_RATE = .001
@@ -19,11 +40,12 @@ train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
 test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 
 transformer = RefTransformer(tokenizer.get_vocab_size(), device=DEVICE)
-print(next(transformer.parameters()).is_cuda)
+if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
+print("Device being used:", DEVICE)
+print("Is model cuda?", next(transformer.parameters()).is_cuda)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(transformer.parameters(), lr=LEARNING_RATE)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.3, threshold=.01, verbose=True, patience=10)
-#scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda e: min((e+1)**(-1/2), (e+1)*(40**(-3/2)))/160)
 
 def train_epoch(model, loss_fn, train_dataloader, verbose=False):
   model.train()
@@ -74,28 +96,12 @@ def evaluate(model, loss_fn, test_dataloader, lim=-1):
 
   return losses / steps
 
+Path('./models/transformer').mkdir(parents=True, exist_ok=True)
 def save_model():
-  torch.save(transformer.state_dict(), './models/' + MODEL_SAVE_NAME + '.pt')
+  torch.save(transformer.state_dict(), MODEL_SAVE_PATH)
   print('Saved!')
 
-Path('./models/transformer').mkdir(parents=True, exist_ok=True)
-MODEL_LOAD_NAME = 'transformer/model'
-MODEL_SAVE_NAME = 'transformer/model_wi'
-IS_MODEL_LOADED = False
-
-def confirm(message):
-  cont = input(message + ' (y/n) ').strip()
-  if cont != 'y': exit()
-
-#confirm(f'Are you sure you want to save the model as {MODEL_SAVE_NAME}?')
-
-if IS_MODEL_LOADED and MODEL_LOAD_NAME != MODEL_SAVE_NAME:
-  pass#confirm('Are you sure you want to load from a different file?')
-
-if IS_MODEL_LOADED: pass#transformer.load_state_dict(torch.load('./models/' + MODEL_LOAD_NAME + '.pt'))
-else:
-  pass#confirm('Are you sure you want to initialize a new model?')
-
+# Evaluate on one batch
 min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
 print('Initial validation loss:', round(min_loss,3))
 
@@ -108,41 +114,22 @@ def visualise_model(n: int):
     print(y)
     print(y_pred)
 
-def handle_training_interrupt():
-  action = input('c -> continue\nh -> / 10 learning rate\nx -> 10x learning rate\nq -> quit\ns -> save\nv -> visualize\n').strip()
-  if action == 'c': pass
-  elif action == 'h':
-    for g in optimizer.param_groups:
-      g['lr'] /= 10
-    print('lr halved')
-    print('new lr =', optimizer.param_groups[0]['lr'])
-  elif action == 'x':
-    for g in optimizer.param_groups:
-      g['lr'] *= 10
-    print('lr 10xed')
-    print('new lr =', optimizer.param_groups[0]['lr'])
-  elif action == 'q':
-    save_model()
-    exit()
-  elif action == 's':
-    save_model()
-  elif action == 'v':
-    visualise_model(4)
-  interrupt_handled()
-
 EPOCHS = 5
 prevent_interrupts()
 for i in range(1, EPOCHS+1):
   train_loss = train_epoch(transformer, loss_fn, train_dataloader, True)
   if was_interrupted():
-    handle_training_interrupt()
-    continue
+    save_model()
+    exit()
   eval_loss = evaluate(transformer, loss_fn, test_dataloader, lim=3)
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
-# TODO Run on the HPC
-# TODO Benchmark the HPC GPUs
+
+# TODO Run the model on HPC
+# TODO Faster decoding
+
+# TODO Benchmark the HPC
 # TODO Will model eval give better results? (dropout)
 # TODO Evaluate sythetic data pretraining
 # TODO Evaluate beam search
