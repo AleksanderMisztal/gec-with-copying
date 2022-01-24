@@ -15,6 +15,8 @@ parser.add_argument("--ln", "--loadname", dest="loadname",
                     help="Load model with this name")
 parser.add_argument("--sn", "--savename", dest="savename",
                     help="Save with this name", required=True)
+parser.add_argument("--epochs", dest="epochs", type=int,
+                    help="Run for this many epochs", required=True)
 args = parser.parse_args()
 
 IS_MODEL_LOADED = args.loadname is not None
@@ -102,9 +104,8 @@ def save_model():
 min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
 print('Initial validation loss:', round(min_loss,3))
 
-EPOCHS = 5
 prevent_interrupts()
-for i in range(1, EPOCHS+1):
+for i in range(1, args.epochs+1):
   train_loss = train_epoch(transformer, loss_fn, train_dataloader, True)
   if was_interrupted():
     save_model()
@@ -113,14 +114,10 @@ for i in range(1, EPOCHS+1):
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
-# Woooooow the hpc is insanely fast
-# TODO Benchmark the HPC
-# TODO Will model eval give better results? (dropout)
+# TODO Run from the dedicated folder
 # TODO Evaluate sythetic data pretraining
-# TODO Evaluate beam search
-# TODO Speed up beam search (batching?)
 # TODO Test inference speed varying n_layers, batching, decoding, etc.
 # TODO Errant on write and improve data
 # TODO Start documenting
 # TODO Increase model size
-# TODO Try w/wout beam search normalizing
+# TODO Make beam search work
