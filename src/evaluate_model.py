@@ -26,6 +26,8 @@ if __name__ == "__main__":
                     help="Load model with this name")
   parser.add_argument("-n", "--nsentences", dest="nsentences",
                       help="Number of sentences to be processed", type=int)
+  parser.add_argument("--layers", dest="layers", type=int,
+                    help="Create this many layers in the transformer", required=True)
   args = parser.parse_args()
 
   loadpath = './models/transformer/' + args.loadname + '.pt'
@@ -38,7 +40,7 @@ if __name__ == "__main__":
     print(f"Not enough sentences in val set")
     exit()
     
-  model = RefTransformer(tokenizer.get_vocab_size())
+  model = RefTransformer(tokenizer.get_vocab_size(), num_layers=args.layers)
   model.load_state_dict(torch.load(loadpath))
 
   if args.nsentences is None: xys = xys_val

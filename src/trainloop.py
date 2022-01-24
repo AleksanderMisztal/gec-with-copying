@@ -1,4 +1,3 @@
-import os
 import torch
 from pathlib import Path
 from argparse import ArgumentParser
@@ -8,8 +7,6 @@ from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.keyinterrupt import prevent_interrupts, was_interrupted
 
-LOCAL_DEV = os.environ['GEC_ENV'] != "hpc"
-
 parser = ArgumentParser()
 parser.add_argument("--ln", "--loadname", dest="loadname",
                     help="Load model with this name")
@@ -17,6 +14,8 @@ parser.add_argument("--sn", "--savename", dest="savename",
                     help="Save with this name", required=True)
 parser.add_argument("--epochs", dest="epochs", type=int,
                     help="Run for this many epochs", required=True)
+parser.add_argument("--layers", dest="layers", type=int,
+                    help="Create this many layers in the transformer", required=True)
 args = parser.parse_args()
 
 IS_MODEL_LOADED = args.loadname is not None
@@ -38,7 +37,7 @@ BATCH_SIZE = 128
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
 test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 
-transformer = RefTransformer(tokenizer.get_vocab_size(), device=DEVICE)
+transformer = RefTransformer(tokenizer.get_vocab_size(), num_layers=args.layers, device=DEVICE)
 if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
 print("Device being used:", DEVICE)
 print("Is model cuda?", next(transformer.parameters()).is_cuda)
@@ -114,10 +113,8 @@ for i in range(1, args.epochs+1):
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
-# TODO Run from the dedicated folder
-# TODO Evaluate sythetic data pretraining
-# TODO Test inference speed varying n_layers, batching, decoding, etc.
-# TODO Errant on write and improve data
-# TODO Start documenting
+# TODO Evaluate with errant
+# TODO Take note of the results
 # TODO Increase model size
 # TODO Make beam search work
+# ? Try to run from the dedicated folder
