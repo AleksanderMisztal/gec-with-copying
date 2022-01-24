@@ -51,6 +51,7 @@ class RefTransformer(nn.Module):
   def __init__(self, vocab_s, num_layers=1, emb_s=256, device=None):
     super(RefTransformer, self).__init__()
     if device is None: device = torch.device('cpu')
+    self.device = device
     self.embedding = nn.Embedding(vocab_s, emb_s).to(device)
     self.pos_embedding = PositionalEncoding(emb_s, 0.1).to(device)
     self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers).to(device)
@@ -61,7 +62,7 @@ class RefTransformer(nn.Module):
     tgt_emb = self.pos_embedding(self.embedding(tgt))
 
     sz = tgt.shape[0]
-    tgt_mask = torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1)
+    tgt_mask = torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1).to(self.device)
     src_padding_mask = (x == PAD_IDX).transpose(0, 1)
     tgt_padding_mask = (tgt == PAD_IDX).transpose(0, 1)
 
