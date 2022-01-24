@@ -8,14 +8,11 @@ from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.keyinterrupt import prevent_interrupts, was_interrupted
 
 parser = ArgumentParser()
-parser.add_argument("--ln", "--loadname", dest="loadname",
-                    help="Load model with this name")
-parser.add_argument("--sn", "--savename", dest="savename",
-                    help="Save with this name", required=True)
-parser.add_argument("--epochs", dest="epochs", type=int,
-                    help="Run for this many epochs", required=True)
-parser.add_argument("--layers", dest="layers", type=int,
-                    help="Create this many layers in the transformer", required=True)
+parser.add_argument("--ln", dest="loadname", help="Load model with this name")
+parser.add_argument("--sn", dest="savename", help="Save with this name", required=True)
+parser.add_argument("--epochs", dest="epochs", type=int, help="Run for this many epochs", required=True)
+parser.add_argument("--layers", dest="layers", type=int, help="Create this many layers in the transformer", required=True)
+parser.add_argument("--lr", dest="learningrate", type=float, help="Learning rate", default=0.001)
 args = parser.parse_args()
 
 IS_MODEL_LOADED = args.loadname is not None
@@ -32,7 +29,7 @@ xys_val = to_token_idxs(xys_val)
 print("Train / val set sizes:", len(xys_train), len(xys_val))
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-LEARNING_RATE = .001
+LEARNING_RATE = args.learningrate
 BATCH_SIZE = 128
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
 test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
@@ -113,8 +110,8 @@ for i in range(1, args.epochs+1):
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
-# TODO Evaluate with errant
-# TODO Take note of the results
-# TODO Increase model size
+# TODO Make a bigger model work
 # TODO Make beam search work
+# TODO Implement the custom transformer
+# TODO Implement copying
 # ? Try to run from the dedicated folder
