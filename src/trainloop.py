@@ -113,11 +113,7 @@ for i in range(1, EPOCHS+1):
   print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
   save_model()
 
-
-# TODO fix all to be on the same device
-# TODO Run the model on HPC
-# TODO Faster decoding
-
+# Woooooow the hpc is insanely fast
 # TODO Benchmark the HPC
 # TODO Will model eval give better results? (dropout)
 # TODO Evaluate sythetic data pretraining

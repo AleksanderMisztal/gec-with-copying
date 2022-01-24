@@ -34,7 +34,7 @@ if __name__ == "__main__":
     exit()
   
   _, xys_val = load_datasets('./data/')
-  if args.nsentences > len(xys_val):
+  if args.nsentences is not None and args.nsentences > len(xys_val):
     print(f"Not enough sentences in val set")
     exit()
     
