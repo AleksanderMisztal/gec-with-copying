@@ -36,11 +36,10 @@ test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 
 transformer = RefTransformer(tokenizer.get_vocab_size(), num_layers=args.layers, device=DEVICE)
 if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
-print("Device being used:", DEVICE)
+print("Device used:", DEVICE)
 print("Is model cuda?", next(transformer.parameters()).is_cuda)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(transformer.parameters(), lr=LEARNING_RATE)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.3, threshold=.01, verbose=True, patience=10)
 
 def train_epoch(model, loss_fn, train_dataloader, verbose=False):
   model.train()
@@ -66,7 +65,6 @@ def train_epoch(model, loss_fn, train_dataloader, verbose=False):
     if verbose: print(f'Step {steps*BATCH_SIZE} / {len(train_dataloader)}. Train loss: {round(losses/steps,3)}', end='\r')
     if was_interrupted(): return losses/steps
 
-  scheduler.step(losses/steps)
   return losses/steps
 
 def evaluate(model, loss_fn, test_dataloader, lim=-1):
@@ -96,19 +94,18 @@ def save_model():
   torch.save(transformer.state_dict(), MODEL_SAVE_PATH)
   print('Saved!')
 
-# Evaluate on one batch
-min_loss = evaluate(transformer, loss_fn, test_dataloader, lim=1)
-print('Initial validation loss:', round(min_loss,3))
-
+min_loss = evaluate(transformer, loss_fn, test_dataloader)
 prevent_interrupts()
 for i in range(1, args.epochs+1):
   train_loss = train_epoch(transformer, loss_fn, train_dataloader, True)
   if was_interrupted():
     save_model()
     exit()
-  eval_loss = evaluate(transformer, loss_fn, test_dataloader, lim=3)
-  print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
-  save_model()
+  eval_loss = evaluate(transformer, loss_fn, test_dataloader)
+  print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.')
+  if eval_loss < min_loss:
+    min_loss = eval_loss
+    save_model()
 
 # TODO Make a bigger model work
 # TODO Make beam search work
