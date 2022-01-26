@@ -5,8 +5,8 @@ from argparse import ArgumentParser
 
 from copygec.dataloader import load_datasets
 from copygec.decoding import greedy_decode
-from copygec.model import RefTransformer
-from copygec.mytokenizer import tokenizer
+from copygec.models.transformer_ref import Transformer
+from copygec.mytokenizer import PAD_IDX, tokenizer
 from copygec.utils import writelines
 
 def write_for_evaluation(model, xys):
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     print(f"Not enough sentences in val set")
     exit()
     
-  model = RefTransformer(tokenizer.get_vocab_size(), num_layers=args.layers)
+  model = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=args.layers)
   model.load_state_dict(torch.load(loadpath))
 
   if args.nsentences is None: xys = xys_val
