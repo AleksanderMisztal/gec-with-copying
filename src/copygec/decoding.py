@@ -4,22 +4,22 @@ from copygec.utils import MaxHeap
 
 logSoftmax = torch.nn.functional.log_softmax
 
-def greedy_decode(model, sentence, max_len=100):
-  src = sentence_to_tensor(sentence).unsqueeze(1)
-  memory = model.encode(src)
-  ys = torch.tensor([[BOS_IDX]])
-  logprob = 0
-  for _ in range(max_len):
-    out = model.decode(ys, memory)[0][0]
-    probs = logSoftmax(out, dim=0)
-    assert len(probs.shape) == 1
-    n_logprob, next_word = torch.max(probs, dim=0)
-    next_word = next_word.item()
-    logprob += n_logprob.item()
-    ys = torch.cat([ys, torch.tensor([[next_word]])], dim=0)
-    if next_word == EOS_IDX: break
-  pred = dec(ys[:,0].tolist())
-  return logprob, pred
+def greedy_decode(model, batch, max_len=15):
+  model.eval()
+  bs = batch.shape[1]
+  memory = model.encode(batch)
+  ys = torch.tensor([[BOS_IDX]*bs])
+  done = torch.zeros(bs)
+  for i in range(max_len):
+    out = model.decode(ys, memory)[i:i+1,:,:]
+    probs = logSoftmax(out, dim=2)
+    _, next_words = torch.max(probs, dim=2)
+    ys = torch.cat([ys, next_words], dim=0)
+    done += (next_words[0] == EOS_IDX)
+    if torch.all(done) == bs: break
+  idss = ys.T.tolist()
+  pred = [dec(ids) for ids in idss]
+  return pred
 
 def beam_search_decode(model, sentence, n_beams=12, n_results=12, max_len=10):
   src = sentence_to_tensor(sentence)

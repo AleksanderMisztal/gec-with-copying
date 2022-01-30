@@ -20,7 +20,9 @@ class DataLoader:
 		bs = self.batch_size
 		random.shuffle(self.xys)
 		self.xys.sort(key=lambda xy: len(xy[0]))
-		self.batches = [self.xys[i*bs:(i+1)*bs] for i in range(len(self.xys)//bs)]
+		s = len(self.xys)
+		self.batches = [self.xys[i*bs:(i+1)*bs] for i in range(s//bs)]
+		if s % bs != 0: self.batches.append(self.xys[s//bs*bs:])
 		random.shuffle(self.batches)
 		return self
 
