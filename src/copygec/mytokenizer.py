@@ -5,6 +5,8 @@ from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 from pathlib import Path
 
+import torch
+
 from src.copygec.dataloader import load_datasets
 
 TRAIN_TOKENIZER = False
@@ -17,7 +19,10 @@ tokenizer.pre_tokenizer = ByteLevel()
 tokenizer.decoder = ByteLevelDecoder()
 
 def enc(x): return tokenizer.encode(x).ids
-def to_token_idxs(xys): return [(enc(x), [BOS_IDX]+enc(y)+[EOS_IDX]) for x, y in xys]
+def dec(y): return tokenizer.decode(y).strip()
+def sentence_to_tokens(sentence): return [BOS_IDX]+enc(sentence)+[EOS_IDX]
+def sentence_to_tensor(sentence): return torch.tensor(sentence_to_tokens(sentence)).T
+def to_token_idxs(xys): return [(sentence_to_tokens(x), sentence_to_tokens(y)) for x, y in xys]
 
 if __name__ == '__main__':
   trainer = BpeTrainer(vocab_size=VOCAB_S, show_progress=True, initial_alphabet=ByteLevel.alphabet())

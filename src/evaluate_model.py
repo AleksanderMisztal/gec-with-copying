@@ -39,7 +39,7 @@ if __name__ == "__main__":
   if args.nsentences is not None and args.nsentences > len(xys_val):
     print(f"Not enough sentences in val set")
     exit()
-    
+
   model = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=args.layers)
   model.load_state_dict(torch.load(loadpath))
 

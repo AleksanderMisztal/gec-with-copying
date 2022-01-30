@@ -19,7 +19,7 @@ def train_epoch(model, loss_fn, dataloader: DataLoader, optimizer, device, verbo
     optimizer.step()
     losses += loss.item()
 
-    if verbose: print(f'Step {steps*dataloader.batch_size} / {len(dataloader)}. Train loss: {round(losses/steps,3)}', end='\r')
+    if verbose: print(f'Step {steps*dataloader.batch_size} / {len(dataloader)}. Train loss: {round(losses/steps,3)}. Lr: {optimizer._rate}', end='\r')
 
   return losses/steps
 

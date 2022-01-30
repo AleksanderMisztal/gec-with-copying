@@ -6,6 +6,7 @@ from copygec.models.transformer_ref import Transformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.training import evaluate, train_epoch
+from copygec.models.optimizer import get_std_opt
 
 parser = ArgumentParser()
 parser.add_argument("--ln", dest="loadname", help="Load model with this name")
@@ -41,7 +42,7 @@ if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
 print("Device used:", DEVICE)
 print("Is model cuda?", next(transformer.parameters()).is_cuda)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-optimizer = torch.optim.Adam(transformer.parameters(), lr=LEARNING_RATE)
+optimizer = get_std_opt(transformer, transformer.d_model)
 
 min_loss = evaluate(transformer, loss_fn, test_dataloader, DEVICE)
 print(f'Initial validation loss: {round(min_loss, 3)}.')
@@ -55,5 +56,10 @@ for i in range(1, args.epochs+1):
     print('Saved!')
   else: print()
 
+# TODO Train / Just decode again with the masking added to decoding
+# TODO Decode in batches
+# TODO Label smoothing
 # TODO Implement copying
 # TODO Make beam search work
+# TODO Visualise attention
+# TODO Implement qualitative visualisations

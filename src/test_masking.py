@@ -2,8 +2,8 @@ import torch
 from random import SystemRandom
 random = SystemRandom()
 from copygec.dataloader import DataLoader
-from src.copygec.models.transformer_ref import Transformer
-from src.copygec.training import evaluate, train_epoch
+from copygec.models.transformer_ref import Transformer
+from copygec.training import evaluate, train_epoch
 
 vocab_s = 100
 BOS_IDX=vocab_s
