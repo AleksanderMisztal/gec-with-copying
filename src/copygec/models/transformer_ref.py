@@ -3,7 +3,7 @@ import torch.nn as nn
 from copygec.models.common import PositionalEncoding
 
 class Transformer(nn.Module):
-  def __init__(self, vocab_s, pad_idx, num_layers=1, d_model=256, device=None):
+  def __init__(self, vocab_s, pad_idx, num_layers=1, d_model=512, device=None):
     super(Transformer, self).__init__()
     if device is None: device = torch.device('cpu')
     self.device = device
@@ -14,18 +14,9 @@ class Transformer(nn.Module):
     self.generator = nn.Linear(d_model, vocab_s).to(device)
     self.d_model = d_model
 
-  def forward(self, x, tgt):
-    x_emb = self.pos_embedding(self.embedding(x))
-    tgt_emb = self.pos_embedding(self.embedding(tgt))
-
-    sz = tgt.shape[0]
-    tgt_mask = torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1).to(self.device)
-    src_padding_mask = (x == self.pad_idx).transpose(0, 1)
-    tgt_padding_mask = (tgt == self.pad_idx).transpose(0, 1)
-
-    y = self.transformer(x_emb, tgt_emb, tgt_mask=tgt_mask, src_key_padding_mask=src_padding_mask, tgt_key_padding_mask=tgt_padding_mask)
-    y = self.generator(y)
-    
+  def forward(self, src, tgt):
+    memory = self.encode(src)
+    y = self.decode(tgt, memory)
     return y
   
   def encode(self, src):

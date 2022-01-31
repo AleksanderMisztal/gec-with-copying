@@ -4,7 +4,7 @@ from copygec.utils import MaxHeap
 
 logSoftmax = torch.nn.functional.log_softmax
 
-def greedy_decode(model, batch, max_len=15):
+def greedy_decode(model, batch, max_len=100):
   model.eval()
   bs = batch.shape[1]
   memory = model.encode(batch)

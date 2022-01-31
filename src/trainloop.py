@@ -2,7 +2,8 @@ import torch
 from pathlib import Path
 from argparse import ArgumentParser
 
-from copygec.models.transformer_ref import Transformer
+#from copygec.models.transformer_ref import Transformer
+from copygec.models.transformer_custom import make_model as Transformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.training import evaluate, train_epoch
@@ -40,7 +41,6 @@ test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
 transformer = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=args.layers, device=DEVICE)
 if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
 print("Device used:", DEVICE)
-print("Is model cuda?", next(transformer.parameters()).is_cuda)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = get_std_opt(transformer, transformer.d_model)
 
@@ -56,8 +56,9 @@ for i in range(1, args.epochs+1):
     print('Saved!')
   else: print()
 
+# TODO Add pad masks
+# TODO Test masking in custom
 # TODO Train / Just decode again with the masking added to decoding
-# TODO Decode in batches
 # TODO Label smoothing
 # TODO Implement copying
 # TODO Make beam search work
