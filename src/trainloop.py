@@ -56,11 +56,17 @@ for i in range(1, args.epochs+1):
     print('Saved!')
   else: print()
 
-# TODO Add pad masks
-# TODO Test masking in custom
+# TODO How to combine the scores?
+# TODO Create masks outside the model
+# TODO All models should return log probs
+# TODO Debug and test copying
+# TODO Masking in copying
+# TODO Test everything
+# TODO Add names when writing sentences for errant. Save errant output
+# TODO Add pad masks to custom
+# TODO Unit test attention
 # TODO Train / Just decode again with the masking added to decoding
 # TODO Label smoothing
-# TODO Implement copying
 # TODO Make beam search work
 # TODO Visualise attention
 # TODO Implement qualitative visualisations

@@ -1,10 +1,11 @@
 from copygec.dataloader import DataLoader
 
 
-def train_epoch(model, loss_fn, dataloader: DataLoader, optimizer, device, verbose=False):
+def train_epoch(model, loss_fn, dataloader: DataLoader, optimizer, device, verbose=False, history=False):
   model.train()
   losses = 0
   steps = 0
+  loss_history = []
 
   for src, tgt in dataloader:
     steps += 1
@@ -18,9 +19,11 @@ def train_epoch(model, loss_fn, dataloader: DataLoader, optimizer, device, verbo
     loss.backward()
     optimizer.step()
     losses += loss.item()
+    loss_history.append(loss.item())
 
-    if verbose: print(f'Step {steps*dataloader.batch_size} / {len(dataloader)}. Train loss: {round(losses/steps,3)}.',end='\r', flush=True)
+    if verbose: print(f'Step {min(len(dataloader), steps*dataloader.batch_size)} / {len(dataloader)}. Train loss: {round(losses/steps,3)}.                          ',end='\r')
 
+  if history: return losses/steps, loss_history
   return losses/steps
 
 def evaluate(model, loss_fn, dataloader, device):
