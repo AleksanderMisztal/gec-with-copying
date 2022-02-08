@@ -132,6 +132,7 @@ class Encoder(nn.Module):
 class EncoderLayer(nn.Module):
   def __init__(self, d_model, self_attn, feed_forward, dropout):
     super(EncoderLayer, self).__init__()
+    self.self_attn = self_attn # May be necessary for .to(device) to work properly
     self_attn_lmbd = lambda x: self_attn(x,x,x)
     self.self_attn_sl = ResidualSublayer(self_attn_lmbd, d_model, dropout)
     self.ff_sl = ResidualSublayer(feed_forward, d_model, dropout)
@@ -157,6 +158,7 @@ class Decoder(nn.Module):
 class DecoderLayer(nn.Module):
   def __init__(self, d_model, self_attn, src_attn, feed_forward, dropout):
     super(DecoderLayer, self).__init__()
+    self.self_attn = self_attn # Necessary for .to(device)?
     self_attn_lmbd = lambda x, mask: self_attn(x,x,x,mask)
     self.self_attn_sl = ResidualSublayer(self_attn_lmbd, d_model, dropout)
     self.src_attn_sl = ResidualSublayer(src_attn, d_model, dropout)
@@ -191,7 +193,7 @@ class MultiHeadedAttention(nn.Module):
     self.k_proj = nn.Linear(d_model, d_model).to(DEVICE)
     self.v_proj = nn.Linear(d_model, d_model).to(DEVICE)
     self.final_proj = nn.Linear(d_model, d_model).to(DEVICE)
-    self.dropout = nn.Dropout(p=dropout)    
+    self.dropout = nn.Dropout(p=dropout)
       
   def forward(self, q, k, v, subsequent_mask=None, return_attns=False):
     mask = subsequent_mask
