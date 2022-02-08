@@ -10,7 +10,7 @@ class Transformer(nn.Module):
     self.pad_idx = pad_idx
     self.embedding = nn.Embedding(vocab_s, d_model).to(device)
     self.pos_embedding = PositionalEncoding(d_model, 0.1).to(device)
-    self.transformer = nn.Transformer(d_model=256, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers).to(device)
+    self.transformer = nn.Transformer(d_model=d_model, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers).to(device)
     self.generator = nn.Linear(d_model, vocab_s).to(device)
     self.d_model = d_model
 

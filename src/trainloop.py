@@ -56,6 +56,8 @@ for i in range(1, args.epochs+1):
     print('Saved!')
   else: print()
 
+
+# TODO Make the custom transformer achieve the scores it should
 # TODO How to combine the scores?
 # TODO Create masks outside the model
 # TODO All models should return log probs

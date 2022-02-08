@@ -7,7 +7,7 @@ from torch.nn import LayerNorm # ! Annotated transformer has a custom implementa
 from copygec.models.common import PositionalEncoding
 
 
-def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=2048, h=8, dropout=0.1, device=None):
+def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=1024, h=8, dropout=0.1, device=None):
   if device is None: device = torch.device('cpu')
   
   attn = lambda: MultiHeadedAttention(h, d_model)
@@ -96,6 +96,7 @@ class CopyGenerator(nn.Module):
     self.generator = nn.Linear(d_model, vocab_s)
 
   def forward(self, htgt, hsrc, src):
+    # TODO Do not transpose, work in the default shapes
     p_gen = self.generator(htgt).transpose(0,1)
     # Nt, bs, d_model ;;; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
@@ -111,8 +112,7 @@ def pos_probs_to_idx_probs(src, probs, vocab_s):
   # probs = [bos_pr, w1_pr, w2_pr, eos_pr]
   # out   = [0,0, ..., w1_pr, ..., w2_prob, ...]
   oh = F.one_hot(src, vocab_s) * 1.0
-  # Ns ;;; Ns * vocab_s
-  # bs, Nt, Ns x Ns, bs, vocab_s -> bs, Nt, vocab_s
+  # (bs, Nt, Ns) x (Ns, bs, vocab_s) -> (bs, Nt, vocab_s)
   return torch.bmm(probs, oh.transpose(0,1))
 
 
