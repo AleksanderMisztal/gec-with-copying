@@ -6,11 +6,12 @@ import torch.nn.functional as F
 from torch.nn import LayerNorm # ! Annotated transformer has a custom implementation, idk if important
 from copygec.models.common import PositionalEncoding
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=1024, h=8, dropout=0.1, device=None):
   if device is None: device = torch.device('cpu')
   
-  attn = lambda: MultiHeadedAttention(h, d_model)
+  attn = lambda: MultiHeadedAttention(h, d_model).to(device)
   ff = lambda: PositionwiseFeedForward(d_model, d_ff, dropout)
   embed = nn.Sequential(
     Embeddings(vocab_s, d_model),
@@ -64,7 +65,7 @@ class EncoderDecoder(nn.Module):
   def decode_only(self, tgt, memory):
     sz = tgt.shape[0]
     tgt_subsequent_mask = torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1).to(self.device)
-    tgt_padding_mask = (tgt == self.pad_idx).transpose(0, 1)
+    tgt_padding_mask = (tgt == self.pad_idx).transpose(0, 1).to(self.device)
     tgt_emb = self.tgt_embed(tgt)
     return self.decoder(tgt_emb, memory, tgt_subsequent_mask)
   
@@ -186,10 +187,10 @@ class MultiHeadedAttention(nn.Module):
     
     self.d_vk = d_model // heads
     self.heads = heads
-    self.q_proj = nn.Linear(d_model, d_model)
-    self.k_proj = nn.Linear(d_model, d_model)
-    self.v_proj = nn.Linear(d_model, d_model)
-    self.final_proj = nn.Linear(d_model, d_model)
+    self.q_proj = nn.Linear(d_model, d_model).to(DEVICE)
+    self.k_proj = nn.Linear(d_model, d_model).to(DEVICE)
+    self.v_proj = nn.Linear(d_model, d_model).to(DEVICE)
+    self.final_proj = nn.Linear(d_model, d_model).to(DEVICE)
     self.dropout = nn.Dropout(p=dropout)    
       
   def forward(self, q, k, v, subsequent_mask=None, return_attns=False):
