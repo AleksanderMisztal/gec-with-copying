@@ -19,7 +19,7 @@ print("Train / val set sizes:", len(xys_train), len(xys_val))
 
 BATCH_SIZE = 128
 LAYERS = 2
-EPOCHS = 10
+EPOCHS = 20
 LEARNING_RATE = 0.001
 
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
@@ -44,15 +44,17 @@ for name in models.keys():
   loss_history = losses[name]
   min_loss = evaluate(model, loss_fn, test_dataloader, DEVICE)
   for i in range(1, EPOCHS+1):
-    train_loss, loss_h = train_epoch(model, loss_fn, train_dataloader, optimizer, DEVICE, True, history=True)
+    train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer, DEVICE, True)
     eval_loss = evaluate(model, loss_fn, test_dataloader, DEVICE)
-    loss_history += loss_h
+    loss_history.append(eval_loss)
     print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(eval_loss,3)}.',end=' ')
     if eval_loss < min_loss:
       min_loss = eval_loss
       torch.save(model.state_dict(), get_save_path(name))
       print('Saved!')
-    else: print()
+    else: 
+      print('Decreasing lr')
+      for g in optimizer.param_groups: g['lr'] /= 2
   
 for name, loss_history in losses.items():
   print(losses)
