@@ -34,7 +34,7 @@ def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=102
     if p.dim() > 1:
       nn.init.xavier_uniform_(p)
   
-  return model
+  return model.to(device)
 
 
 class EncoderDecoder(nn.Module):
