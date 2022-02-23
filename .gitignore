@@ -1,5 +1,5 @@
 **/__pycache__/
-settings.json
 /models/
-/out/*.txt
-/copygec.egg-info/
+/out/
+/venv/
+/logs/
