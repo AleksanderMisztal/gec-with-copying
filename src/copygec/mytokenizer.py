@@ -26,7 +26,7 @@ def to_token_idxs(xys): return [(sentence_to_tokens(x), sentence_to_tokens(y)) f
 
 if __name__ == '__main__':
   trainer = BpeTrainer(vocab_size=VOCAB_S, show_progress=True, initial_alphabet=ByteLevel.alphabet())
-  train, _ = load_datasets('./data/')
+  train, _, _ = load_datasets()
   sentences = [s for xy in train for s in xy]
   tokenizer.train_from_iterator(sentences, trainer)
   Path(TOKENIZER_PATH).mkdir(parents=True, exist_ok=True)

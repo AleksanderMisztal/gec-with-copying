@@ -1,9 +1,8 @@
 import torch
-from random import SystemRandom
-random = SystemRandom()
+import random
 from copygec.dataloader import DataLoader
-#from copygec.models.transformer_ref import Transformer
 import matplotlib.pyplot as plt
+#from copygec.models.transformer_ref import Transformer
 from copygec.models.transformer_custom import make_model as Transformer
 from copygec.training import evaluate, train_epoch
 

@@ -39,10 +39,10 @@ def process_set(name):
 	corr = [sentence for path in paths[name] for sentence in corr_from_m2(path)]
 	assert len(orig) == len(corr)
 	xys = [(x.strip(), y.strip()) for x, y in zip(orig, corr)]
-	print(f"{name} set size: {len(xys)}")
 	random.shuffle(xys)
 	with open(f'./data/{name}.json', 'w', encoding='utf-8') as f:
 		json.dump(xys, f, ensure_ascii=False, indent=2)
+	print(f"Processed {name} set. Size: {len(xys)}")
 
 
 paths = {

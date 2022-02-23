@@ -1,10 +1,12 @@
 import random
 from copygec.utils import read_json, to_padded_tensor, unzip
 
-def load_datasets(path):
-	train = read_json(path + 'train.json')
-	val = read_json(path + 'val.json')
-	return train, val
+DATA_PATH = './data/'
+def load_datasets():
+	train = read_json(DATA_PATH + 'train.json')
+	dev = read_json(DATA_PATH + 'dev.json')
+	test = read_json(DATA_PATH + 'test.json')
+	return train, dev, test
 
 class DataLoader:
 	def __init__(self, xys, batch_size, pad_token):

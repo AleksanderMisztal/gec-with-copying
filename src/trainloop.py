@@ -27,16 +27,16 @@ if IS_MODEL_LOADED and not Path(MODEL_LOAD_PATH).exists():
   print('Attmepting to load a model that does not exist!')
   exit()
 
-xys_train, xys_val = load_datasets('./data/')
+xys_train, xys_dev, xys_test = load_datasets()
 xys_train = to_token_idxs(xys_train)
-xys_val = to_token_idxs(xys_val)
-print("Train / val set sizes:", len(xys_train), len(xys_val))
+xys_dev = to_token_idxs(xys_dev)
+print("Train / val set sizes:", len(xys_train), len(xys_dev))
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LEARNING_RATE = args.learningrate
 BATCH_SIZE = 128
 train_dataloader = DataLoader(xys_train, BATCH_SIZE, PAD_IDX)
-test_dataloader = DataLoader(xys_val, BATCH_SIZE, PAD_IDX)
+test_dataloader = DataLoader(xys_dev, BATCH_SIZE, PAD_IDX)
 
 transformer = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=args.layers, device=DEVICE)
 if IS_MODEL_LOADED: transformer.load_state_dict(torch.load(MODEL_LOAD_PATH))
@@ -55,15 +55,3 @@ for i in range(1, args.epochs+1):
     torch.save(transformer.state_dict(), MODEL_SAVE_PATH)
     print('Saved!')
   else: print()
-
-
-# TODO Make the copy transformer achieve the scores it should
-  # TODO Debug and test copying
-  # TODO Masking in copying
-  # TODO How to combine the scores?
-  # TODO Add pad masks to custom
-# TODO Create masks outside the model
-# TODO Label smoothing
-# TODO Make beam search work
-# TODO Visualise attention
-# TODO Implement qualitative visualisations
