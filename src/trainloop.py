@@ -57,7 +57,6 @@ for i in range(1, args.epochs+1):
   else: print()
 
 
-# TODO Add names when writing sentences for errant. Save errant output
 # TODO Make the copy transformer achieve the scores it should
   # TODO Debug and test copying
   # TODO Masking in copying

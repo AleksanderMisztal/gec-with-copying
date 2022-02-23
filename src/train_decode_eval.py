@@ -25,8 +25,7 @@ def train_model(model, xys, optimizer, batch_size, epochs, device, model_name):
 
   loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
-  min_loss = evaluate(model, loss_fn, test_dataloader, device)
-  print(f'Initial validation loss: {round(min_loss, 3)}.')
+  min_loss = 100_000
   for i in range(1, epochs+1):
     train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer, device, True)
     eval_loss = evaluate(model, loss_fn, test_dataloader, device)
@@ -45,7 +44,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 transformer = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=N_LAYERS, device=DEVICE)
 optimizer = get_std_opt(transformer, transformer.d_model)
 
-xys = load_datasets('./data')
+xys = load_datasets('./data/')
 
 print('Starting training...')
 train_model(transformer, xys, optimizer, BATCH_SIZE, EPOCHS, DEVICE, SAVENAME)

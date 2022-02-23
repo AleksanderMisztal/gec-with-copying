@@ -1,13 +1,13 @@
+import torch
+from pathlib import Path
+
 from tokenizers import Tokenizer
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
-from pathlib import Path
 
-import torch
-
-from src.copygec.dataloader import load_datasets
+from copygec.dataloader import load_datasets
 
 TRAIN_TOKENIZER = False
 TOKENIZER_PATH = './models/tokenizer'
