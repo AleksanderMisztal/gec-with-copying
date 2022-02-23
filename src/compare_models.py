@@ -42,7 +42,9 @@ for name in models.keys():
   model = models[name]
   optimizer = optimizers[name]
   loss_history = losses[name]
+  print(f'Training model "{name}"...')
   min_loss = evaluate(model, loss_fn, test_dataloader, DEVICE)
+  loss_history.append(min_loss)
   for i in range(1, EPOCHS+1):
     train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer, DEVICE, True)
     eval_loss = evaluate(model, loss_fn, test_dataloader, DEVICE)
@@ -52,12 +54,11 @@ for name in models.keys():
       min_loss = eval_loss
       torch.save(model.state_dict(), get_save_path(name))
       print('Saved!')
-    else: 
+    else:
       print('Decreasing lr')
       for g in optimizer.param_groups: g['lr'] /= 2
   
 for name, loss_history in losses.items():
-  print(losses)
   plt.plot(loss_history, label=name)
 plt.savefig(get_loss_path(name), bbox_inches='tight')
 

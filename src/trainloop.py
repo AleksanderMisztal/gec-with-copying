@@ -57,17 +57,13 @@ for i in range(1, args.epochs+1):
   else: print()
 
 
-# TODO Make the custom transformer achieve the scores it should
-# TODO How to combine the scores?
-# TODO Create masks outside the model
-# TODO All models should return log probs
-# TODO Debug and test copying
-# TODO Masking in copying
-# TODO Test everything
 # TODO Add names when writing sentences for errant. Save errant output
-# TODO Add pad masks to custom
-# TODO Unit test attention
-# TODO Train / Just decode again with the masking added to decoding
+# TODO Make the copy transformer achieve the scores it should
+  # TODO Debug and test copying
+  # TODO Masking in copying
+  # TODO How to combine the scores?
+  # TODO Add pad masks to custom
+# TODO Create masks outside the model
 # TODO Label smoothing
 # TODO Make beam search work
 # TODO Visualise attention

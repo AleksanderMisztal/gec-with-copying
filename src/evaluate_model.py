@@ -11,7 +11,7 @@ from copygec.utils import to_padded_tensor, unzip, writelines
 
 BATCH_SIZE=128
 
-def write_for_evaluation(model, xys):
+def write_for_evaluation(model, xys, name=None):
   print(f'Writing predictions for {len(xys)} sentences...')
   xys.sort(key=lambda xy: len(xy[0]))
   s, bs = len(xys), BATCH_SIZE
@@ -23,10 +23,11 @@ def write_for_evaluation(model, xys):
     src = to_padded_tensor([sentence_to_tokens(x) for x in xs], PAD_IDX).T
     batch_preds = greedy_decode(model, src)
     preds+=batch_preds
-
-  writelines("./out/orig.txt", [x for x,y in xys])
-  writelines("./out/corr.txt", [y for x,y in xys])
-  writelines("./out/pred.txt", preds)
+  
+  write_path = "./out" if name is None else './out/'+name
+  writelines(write_path+"/orig.txt", [x for x,y in xys])
+  writelines(write_path+"/corr.txt", [y for x,y in xys])
+  writelines(write_path+"/pred.txt", preds)
 
   print(f'Done!')
 
