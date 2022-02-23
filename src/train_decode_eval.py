@@ -1,7 +1,7 @@
 import torch
 from pathlib import Path
-#from copygec.models.transformer_ref import Transformer
-from copygec.models.transformer_custom import make_model as Transformer
+from copygec.models.transformer_ref import Transformer
+# from copygec.models.transformer_custom import make_model as Transformer
 from copygec.dataloader import DataLoader, load_datasets
 from copygec.mytokenizer import PAD_IDX, to_token_idxs, tokenizer
 from copygec.training import evaluate, train_epoch
