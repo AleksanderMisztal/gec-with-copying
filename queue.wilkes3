@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --time=02:00:00
-#SBATCH --mail-type=NONE
+#SBATCH --mail-type=ALL
 #SBATCH -p ampere
 
 . /etc/profile.d/modules.sh                # Leave this line (enables the module command)
@@ -15,8 +15,8 @@ module load rhel8/default-amp              # REQUIRED - loads the basic environm
 
 source venv/bin/activate
 
-CMD="python3 $hpcapplication >./logs/log$JOBID.txt 2>&1"
 JOBID=$SLURM_JOB_ID
+CMD="python3 $hpcapplication >./logs/log$JOBID.txt 2>&1"
 
 echo -e "Running from `pwd`.\n"
 echo "Time: `date`"

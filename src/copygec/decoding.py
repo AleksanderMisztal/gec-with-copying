@@ -4,12 +4,12 @@ from copygec.utils import MaxHeap
 
 logSoftmax = torch.nn.functional.log_softmax
 
-def greedy_decode(model, batch, max_len=100):
+def greedy_decode(model, batch, device, max_len=100):
   model.eval()
   bs = batch.shape[1]
   memory = model.encode(batch)
-  ys = torch.tensor([[BOS_IDX]*bs])
-  done = torch.zeros(bs)
+  ys = torch.tensor([[BOS_IDX]*bs]).to(device)
+  done = torch.zeros(bs).to(device)
   for i in range(max_len):
     out = model.decode(ys, memory)[i:i+1,:,:]
     probs = logSoftmax(out, dim=2)
@@ -18,7 +18,11 @@ def greedy_decode(model, batch, max_len=100):
     done += (next_words[0] == EOS_IDX)
     if torch.all(done) == bs: break
   idss = ys.T.tolist()
+  
+  for ids in idss: ids.append(EOS_IDX)
+  idss = [ids[:ids.index(EOS_IDX)] for ids in idss]
   pred = [dec(ids) for ids in idss]
+  
   return pred
 
 def beam_search_decode(model, sentence, n_beams=12, n_results=12, max_len=10):

@@ -1,3 +1,4 @@
+import json
 import torch
 import os
 from pathlib import Path
@@ -50,6 +51,8 @@ def evaluate(model, loss_fn, dataloader, device):
   return losses / steps
 
 def train_model(model, xys_train, xys_dev, optimizer, batch_size, epochs, device, model_name):
+  print('Starting training...')
+
   MODEL_SAVE_PATH = './models/transformer/' + model_name + '.pt'
   Path('./models/transformer').mkdir(parents=True, exist_ok=True)
 
@@ -61,14 +64,14 @@ def train_model(model, xys_train, xys_dev, optimizer, batch_size, epochs, device
   for i in range(1, epochs+1):
     train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer, device, True)
     dev_loss = evaluate(model, loss_fn, dev_dataloader, device)
-    print(f'Epoch {i} done. t: {round(train_loss,3)}, v: {round(dev_loss,3)}.',end=' ')
+    print(f'Epoch {i} done. Train loss: {round(train_loss,3)}, dev loss: {round(dev_loss,3)}.',end=' ')
     if dev_loss < min_dev_loss:
       min_dev_loss = dev_loss
       torch.save(model.state_dict(), MODEL_SAVE_PATH)
       print('Saved!')
     else: print()
 
-def write_for_evaluation(model, xys, bs, name=None):
+def write_for_evaluation(model, xys, bs, device, name):
   print(f'Writing predictions for {len(xys)} sentences...')
   xys.sort(key=lambda xy: len(xy[0]))
   s = len(xys)
@@ -78,17 +81,28 @@ def write_for_evaluation(model, xys, bs, name=None):
   for batch in batches:
     xs, ys = unzip(batch)
     src = to_padded_tensor([sentence_to_tokens(x) for x in xs], PAD_IDX).T
-    batch_preds = greedy_decode(model, src)
+    src = src.to(device)
+    batch_preds = greedy_decode(model, src, device)
     preds+=batch_preds
   
-  write_path = "./out" if name is None else './out/'+name
-  writelines(write_path+"/orig.txt", [x for x,y in xys])
-  writelines(write_path+"/corr.txt", [y for x,y in xys])
+  write_path = './out/'+name
+  Path(write_path).mkdir(parents=True, exist_ok=True)
+
+  xs = [x for x,y in xys]
+  ys = [y for x,y in xys]
+  ocps = [{'corr': corr, 'orig': orig, 'pred': pred} for (corr, orig, pred) in zip (ys, xs, preds)]
+
+  writelines(write_path+"/orig.txt", xs)
+  writelines(write_path+"/corr.txt", ys)
   writelines(write_path+"/pred.txt", preds)
+  with open(write_path+'/results.json', 'w', encoding='utf-8') as f:
+    json.dump(ocps, f, ensure_ascii=False, indent=2)
 
   print(f'Done!')
 
 def run_errant(in_dir):
+  print('Starting to evaluate with errant...')
+
   get_ref = f"errant_parallel -orig {in_dir}/orig.txt -cor {in_dir}/corr.txt -out {in_dir}/ref.m2"
   get_hyp = f"errant_parallel -orig {in_dir}/orig.txt -cor {in_dir}/pred.txt -out {in_dir}/hyp.m2"
   compare = f"errant_compare -hyp {in_dir}/hyp.m2 -ref {in_dir}/ref.m2"
