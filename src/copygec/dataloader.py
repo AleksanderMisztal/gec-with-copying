@@ -1,18 +1,19 @@
 import random
+from copygec.mytokenizer import PAD_IDX, enc
 from copygec.utils import read_json, to_padded_tensor, unzip
 
-DATA_PATH = './data/'
 def load_datasets():
-	train = read_json(DATA_PATH + 'train.json')
-	dev = read_json(DATA_PATH + 'dev.json')
-	test = read_json(DATA_PATH + 'test.json')
-	return train, dev, test
+	return read_json('./data/data.json')
+
+def sentences_to_padded_tensor(sentences):
+	return to_padded_tensor([enc(s) for s in sentences], PAD_IDX).T
+
 
 class DataLoader:
-	def __init__(self, xys, batch_size, pad_token):
+	def __init__(self, xys, batch_size, device):
 		self.xys = xys.copy()
 		self.batch_size = batch_size
-		self.pad_token = pad_token
+		self.device = device
 	
 	def __len__(self):
 		return len(self.xys)
@@ -32,6 +33,6 @@ class DataLoader:
 		if self.iter < len(self.batches):
 			xs, ys = unzip(self.batches[self.iter])
 			self.iter += 1
-			return to_padded_tensor(xs, self.pad_token).T, to_padded_tensor(ys, self.pad_token).T
+			return sentences_to_padded_tensor(xs).to(self.device), sentences_to_padded_tensor(ys).to(self.device)
 		else:
 			raise StopIteration

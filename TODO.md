@@ -1,0 +1,13 @@
+# Todos
+- Get a high score with the ref transformer
+- Get a high score with the custom transformer
+- Get a high score with the copying transformer
+- Create masks outside the model (in dataloader?)
+- Debug and test copying
+- Masking in copying
+- How to combine the scores?
+- Add pad masks to custom
+- Label smoothing as regularization?
+- Make beam search work
+- Visualise attention
+- Implement qualitative visualisations

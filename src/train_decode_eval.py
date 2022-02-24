@@ -1,37 +1,23 @@
-import torch
 from copygec.models.transformer_ref import Transformer
-# from copygec.models.transformer_custom import make_model as Transformer
+from copygec.mytokenizer import VOCAB_S, PAD_IDX
 from copygec.dataloader import load_datasets
-from copygec.mytokenizer import PAD_IDX, tokenizer
-from copygec.models.optimizer import get_std_opt
-from copygec.training import train_model, run_errant, write_for_evaluation
+from copygec.utils import unzip
+import copygec.gec_hub as hub
 
-SAVENAME = 'exp1'
-LOADNAME = './models/transformer/' + SAVENAME + '.pt'
-N_LAYERS = 3
-BATCH_SIZE = 128
-EPOCHS = 5
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-transformer = Transformer(tokenizer.get_vocab_size(), PAD_IDX, num_layers=N_LAYERS, device=DEVICE)
-optimizer = get_std_opt(transformer, transformer.d_model)
+model_name = 'test'#'ref_3l_10e'
+num_layers = 1
+epochs = 1
 
-xys_train, xys_dev, xys_test = load_datasets()
+transformer = Transformer(VOCAB_S, PAD_IDX, num_layers=num_layers, device=hub.DEVICE)
+xys = load_datasets()
 
-#train_model(transformer, xys_train, xys_dev, optimizer, BATCH_SIZE, EPOCHS, DEVICE, SAVENAME)
-transformer.load_state_dict(torch.load(LOADNAME))
-write_for_evaluation(transformer, xys_test, BATCH_SIZE, DEVICE, SAVENAME)
-run_errant(f'./out/{SAVENAME}')
+print('Loaded data. Starting training...')
+hub.train_model(transformer, xys['train'][:16], xys['dev'][:16], epochs, model_name)
+hub.load_model(transformer, model_name)
 
-# TODO Get a high score with the ref transformer
-  # TODO Clean the data? Try tokenizing Hello.friends
-# TODO Get a high score with the custom transformer
-# TODO Get a high score with the copying transformer
-  # TODO Debug and test copying
-  # TODO Masking in copying
-  # TODO How to combine the scores?
-  # TODO Add pad masks to custom
-# TODO Create masks outside the model
-# TODO Label smoothing as regularization?
-# TODO Make beam search work
-# TODO Visualise attention
-# TODO Implement qualitative visualisations
+print('Predicting...')
+orig, corr = unzip(xys['test'][:16])
+pred = hub.get_predictions(transformer, orig)
+hub.save_results(orig, corr, pred, model_name)
+print('Running errant...')
+hub.run_errant(model_name)

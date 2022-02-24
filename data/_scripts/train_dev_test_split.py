@@ -40,9 +40,8 @@ def process_set(name):
 	assert len(orig) == len(corr)
 	xys = [(x.strip(), y.strip()) for x, y in zip(orig, corr)]
 	random.shuffle(xys)
-	with open(f'./data/{name}.json', 'w', encoding='utf-8') as f:
-		json.dump(xys, f, ensure_ascii=False, indent=2)
 	print(f"Processed {name} set. Size: {len(xys)}")
+	return xys
 
 
 paths = {
@@ -62,5 +61,10 @@ paths = {
 	]
 }
 
+savename = 'data1'
+data = {}
 for name in paths.keys():
-	process_set(name)
+	data[name] = process_set(name)
+
+with open(f'./data/{savename}.json', 'w', encoding='utf-8') as f:
+	json.dump(data, f, ensure_ascii=False)
