@@ -1,3 +1,4 @@
+import string
 import torch
 import json
 import random
@@ -23,21 +24,41 @@ def writelines(path, lines):
   with open(path, "w", encoding='utf-8') as f:
     f.write('\n'.join(lines))
 
-def noise(orig: 'list[int]', vocab_s: int):
-  x = orig.copy()
-  y = [0 for _ in x]
-  i = 0
-  while i < len(x)-1:
-    a = random.random()
-    if a < .1:
-      y[i] = y[i+1] = 1
-      x[i], x[i+1] = x[i+1], x[i]
-      i+=1
-    elif a < .2:
-      x[i] = random.randint(0, vocab_s-1)
-      y[i] = 2
-    i+=1
-  return x, y
+def show_cuda_memory():
+  MB = 10 ** 6
+  t = torch.cuda.get_device_properties(0).total_memory//MB
+  r = torch.cuda.memory_reserved(0)//MB
+  a = torch.cuda.memory_allocated(0)//MB
+  f = r-a
+  print(f'Total: {t}, reserved: {r}, allocated: {a}, free: {f}')
+
+chars = string.ascii_letters + string.digits
+with open('./data/words.txt') as f: words = f.read().split()
+
+def rand_char():
+  return random.choice(chars)
+
+def rand_word():
+  return random.choice(words)
+
+def noise(x):
+  tokens = x.split()
+  tok_changes = len(tokens)//7
+  for i in random.sample(range(len(tokens)-3), tok_changes):
+    if i >= len(tokens): continue
+    t = list(tokens[i])
+    a = 100*random.random()
+    if a < 40:
+      t[random.choice(range(len(t)))] = rand_char()
+      tokens[i] = ''.join(t)
+    elif a < 60:
+      tokens.pop(i)
+    elif a < 80:
+      tokens.insert(i, rand_word())
+    elif i > 0:
+      tokens[i-1:i+1] = [tokens[i], tokens[i-1]]
+  return ' '.join(tokens)
+
 
 from heapq import heapify, heappush, heappushpop
 

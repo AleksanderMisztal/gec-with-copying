@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --time=02:00:00
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=NONE
 #SBATCH -p ampere
 
 . /etc/profile.d/modules.sh                # Leave this line (enables the module command)

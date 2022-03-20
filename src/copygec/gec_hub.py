@@ -6,9 +6,9 @@ from pathlib import Path
 from copygec.dataloader import DataLoader, sentences_to_padded_tensor
 from copygec.decoding import greedy_decode
 from copygec.training import train_model as _train_model
-from copygec.utils import writelines, read_json
+from copygec.utils import noise, writelines, read_json
 from copygec.models.optimizer import get_std_opt
-from copygec.mytokenizer import PAD_IDX
+from copygec.mytokenizer import PAD_IDX, enc
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -20,14 +20,15 @@ def get_save_path(model_name):
 
 def load_model(model, model_name):
   save_path = get_save_path(model_name)
-  model.load_state_dict(torch.load(save_path))
+  model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
 
-def train_model(model, xys_train, xys_dev, epochs, model_name):
+def train_model(model, xys_train, xys_dev, epochs, model_name, add_noise=False):
   save_path = get_save_path(model_name)
   loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
   optimizer = get_std_opt(model, model.d_model)
+  preprocess = noise if add_noise else None
 
-  train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE)
+  train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE, preprocess)
   dev_dataloader = DataLoader(xys_dev, BATCH_SIZE, DEVICE)
 
   _train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs, save_path)
@@ -48,12 +49,16 @@ def save_results(orig, corr, pred, model_name):
 
   ocps = [{'corr': c, 'orig': o, 'pred': p} for (c, o, p) in zip (corr, orig, pred)]
   mistakes = [entry for entry in ocps if entry['corr'] != entry['pred']]
+  corrections = [e for e in ocps if e['corr'] == e['pred'] and e['pred'] != e['orig']]
   with open(dir+'/results.json', 'w', encoding='utf-8') as f:
     json.dump(ocps, f, ensure_ascii=False, indent=2)
   with open(dir+'/mistakes.json', 'w', encoding='utf-8') as f:
     json.dump(mistakes, f, ensure_ascii=False, indent=2)
+  with open(dir+'/corrections.json', 'w', encoding='utf-8') as f:
+    json.dump(corrections, f, ensure_ascii=False, indent=2)
 
 def run_errant(model_name):
+  print('Running errant...', flush=True)
   dir = './out/' + model_name
   ocps = read_json(dir+'/results.json')
   
@@ -71,3 +76,40 @@ def run_errant(model_name):
 
   os.system('rm ./out/' +model_name+ '/{orig,corr,pred}.txt')
   os.system('rm ./out/' +model_name+ '/{hyp,ref}.m2')
+
+from copygec.mytokenizer import ids_to_tokens
+
+def visualise_distribution(a, copy_probs, gen_probs, true_ids):
+  copy = torch.topk(copy_probs, 5).indices
+  gen = torch.topk(gen_probs, 5).indices
+  gen_tokens = [ids_to_tokens(ids) for ids in gen]
+  copy_tokens = [ids_to_tokens(ids) for ids in copy]
+  true_tokens = ids_to_tokens(true_ids)
+  a = a.detach().numpy()
+
+  copied = False
+  for tt, ai, p_copy, p_gen in zip(true_tokens, a, copy_tokens, gen_tokens):
+    air = round(ai,2)
+    if ai > 0: copied = True
+    print(tt, air, p_copy, 1-air, p_gen)
+  if copied: 
+    print("COPYYYYYYYYYYYYYY")
+    exit()
+
+def visualise_copying(model, xys):
+  for x, y in xys:
+    print(x)
+    print(y)
+    print(enc(y))
+    src = sentences_to_padded_tensor([x])
+    tgt = sentences_to_padded_tensor([y])
+    tgt_in =  tgt[:-1, :]
+    tgt_out =  tgt[1:, :]
+    out = model(src, tgt_in)
+    data = model.generator.copy_data
+    a = data['a'][:,0,0]
+    copy = data['copy'][:,0,:]
+    gen = data['gen'][:,0,:]
+    print(greedy_decode(model, src)[0])
+    visualise_distribution(a, copy, gen, tgt_out)
+  

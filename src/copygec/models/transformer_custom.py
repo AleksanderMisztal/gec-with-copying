@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch.nn import LayerNorm # ! Annotated transformer has a custom implementation, idk if important
 from copygec.models.common import PositionalEncoding
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=1024, h=8, dropout=0.1, device=None):
   if device is None: device = torch.device('cpu')
@@ -95,17 +94,20 @@ class CopyGenerator(nn.Module):
     self.attn = MultiHeadedAttention(1, d_model)
     self.copy_prob_lin = nn.Linear(d_model, 1)
     self.generator = nn.Linear(d_model, vocab_s)
+    self.copy_data = None
 
   def forward(self, htgt, hsrc, src):
-    # TODO Do not transpose, work in the default shapes
-    p_gen = self.generator(htgt).transpose(0,1)
-    # Nt, bs, d_model ;;; bs, Nt, Ns
+    p_gen = self.generator(htgt)
+    # Nt, bs, d_model ; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
     p_copy = pos_probs_to_idx_probs(src, attns, self.vocab_s)
-    a_copy = torch.sigmoid(self.copy_prob_lin(torch.sum(scores, dim=0))).unsqueeze(1)
-    # bs ;;; bs, Nt, vocab_s ;;; bs, Nt, vocab_s
+    a_copy = torch.sigmoid(self.copy_prob_lin(scores))
+    a_copy = torch.full(a_copy.shape, .5).to(a_copy.device)
+    a_copy.cuda(device=0)
+    self.copy_data = {'a': a_copy, 'copy': p_copy, 'gen': p_gen}
+    # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
     res = a_copy * p_copy + (1 - a_copy) * p_gen
-    return res.transpose(0,1)
+    return res
 
 
 def pos_probs_to_idx_probs(src, probs, vocab_s):
@@ -113,8 +115,8 @@ def pos_probs_to_idx_probs(src, probs, vocab_s):
   # probs = [bos_pr, w1_pr, w2_pr, eos_pr]
   # out   = [0,0, ..., w1_pr, ..., w2_prob, ...]
   oh = F.one_hot(src, vocab_s) * 1.0
-  # (bs, Nt, Ns) x (Ns, bs, vocab_s) -> (bs, Nt, vocab_s)
-  return torch.bmm(probs, oh.transpose(0,1))
+  # (bs, Nt, Ns) x (Ns, bs, vocab_s) -> (Nt,bs,vocab_s)
+  return torch.bmm(probs, oh.transpose(0,1)).transpose(0,1)
 
 
 class Encoder(nn.Module):
@@ -189,10 +191,10 @@ class MultiHeadedAttention(nn.Module):
     
     self.d_vk = d_model // heads
     self.heads = heads
-    self.q_proj = nn.Linear(d_model, d_model).to(DEVICE)
-    self.k_proj = nn.Linear(d_model, d_model).to(DEVICE)
-    self.v_proj = nn.Linear(d_model, d_model).to(DEVICE)
-    self.final_proj = nn.Linear(d_model, d_model).to(DEVICE)
+    self.q_proj = nn.Linear(d_model, d_model)
+    self.k_proj = nn.Linear(d_model, d_model)
+    self.v_proj = nn.Linear(d_model, d_model)
+    self.final_proj = nn.Linear(d_model, d_model)
     self.dropout = nn.Dropout(p=dropout)
       
   def forward(self, q, k, v, subsequent_mask=None, return_attns=False):
