@@ -1,3 +1,4 @@
+import math
 import torch
 import os
 import json
@@ -78,6 +79,8 @@ def run_errant(model_name):
   os.system('rm ./out/' +model_name+ '/{hyp,ref}.m2')
 
 from copygec.mytokenizer import ids_to_tokens
+import matplotlib.pyplot as plt
+
 
 def visualise_distribution(a, copy_probs, gen_probs, true_ids):
   copy = torch.topk(copy_probs, 5).indices
@@ -87,14 +90,18 @@ def visualise_distribution(a, copy_probs, gen_probs, true_ids):
   true_tokens = ids_to_tokens(true_ids)
   a = a.detach().numpy()
 
-  copied = False
   for tt, ai, p_copy, p_gen in zip(true_tokens, a, copy_tokens, gen_tokens):
     air = round(ai,2)
-    if ai > 0: copied = True
     print(tt, air, p_copy, 1-air, p_gen)
-  if copied: 
-    print("COPYYYYYYYYYYYYYY")
-    exit()
+
+def plot_copy_distributions(copy_probs: torch.Tensor):
+  copy_probs = copy_probs.detach().numpy().tolist()
+  significants = [[p for p in probs if not math.isclose(p, 0.0)] for probs in copy_probs]
+  
+  print(significants)
+  for probs in significants:
+    plt.hist(probs)
+    plt.show()
 
 def visualise_copying(model, xys):
   for x, y in xys:
@@ -110,6 +117,7 @@ def visualise_copying(model, xys):
     a = data['a'][:,0,0]
     copy = data['copy'][:,0,:]
     gen = data['gen'][:,0,:]
-    print(greedy_decode(model, src)[0])
+    #print(greedy_decode(model, src)[0])
     visualise_distribution(a, copy, gen, tgt_out)
-  
+    plot_copy_distributions(copy)
+    input("continue")

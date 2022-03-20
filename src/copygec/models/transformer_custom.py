@@ -103,7 +103,7 @@ class CopyGenerator(nn.Module):
     p_copy = pos_probs_to_idx_probs(src, attns, self.vocab_s)
     a_copy = torch.sigmoid(self.copy_prob_lin(scores))
     a_copy = torch.full(a_copy.shape, .5).to(a_copy.device)
-    a_copy.cuda(device=0)
+    #a_copy.cuda(device=0)
     self.copy_data = {'a': a_copy, 'copy': p_copy, 'gen': p_gen}
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
     res = a_copy * p_copy + (1 - a_copy) * p_gen

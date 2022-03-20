@@ -1,5 +1,4 @@
 import torch
-from copygec.utils import show_cuda_memory
 
 def train_epoch(model, loss_fn, dataloader, optimizer):
   model.train()
@@ -38,7 +37,6 @@ def evaluate(model, loss_fn, dataloader):
 def train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs, save_path):
   min_dev_loss = 100_000
   for i in range(1, epochs+1):
-    if next(model.parameters()).is_cuda: show_cuda_memory()
     train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer)
     dev_loss = evaluate(model, loss_fn, dev_dataloader)
     print(f'Epoch {i} done. Train loss: {round(train_loss,3)}, dev loss: {round(dev_loss,3)}.',end='')
