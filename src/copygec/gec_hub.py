@@ -7,13 +7,13 @@ from pathlib import Path
 from copygec.dataloader import DataLoader, sentences_to_padded_tensor
 from copygec.decoding import greedy_decode
 from copygec.training import train_model as _train_model
-from copygec.utils import noise, writelines, read_json
+from copygec.utils import noise, writelines, read_json, zip_tensors
 from copygec.models.optimizer import get_std_opt
 from copygec.mytokenizer import PAD_IDX, enc
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 
 
 def get_save_path(model_name):
@@ -78,20 +78,25 @@ def run_errant(model_name):
   os.system('rm ./out/' +model_name+ '/{orig,corr,pred}.txt')
   os.system('rm ./out/' +model_name+ '/{hyp,ref}.m2')
 
-from copygec.mytokenizer import ids_to_tokens
+from copygec.mytokenizer import id_to_token, ids_to_tokens
 import matplotlib.pyplot as plt
 
 
 def visualise_distribution(a, copy_probs, gen_probs, true_ids):
-  copy = torch.topk(copy_probs, 5).indices
-  gen = torch.topk(gen_probs, 5).indices
-  gen_tokens = [ids_to_tokens(ids) for ids in gen]
-  copy_tokens = [ids_to_tokens(ids) for ids in copy]
+  top_copy = torch.topk(copy_probs, 5)
+  top_gen = torch.topk(gen_probs, 5)
+
+  top_copy = zip_tensors(top_copy.indices, top_copy.values)
+  top_gen = zip_tensors(top_gen.indices, top_gen.values)
+
+  gen_tokens = [[(id_to_token(id),round(p,4)) for id,p in pos] for pos in top_gen]
+  copy_tokens = [[(id_to_token(id),round(p,4)) for id,p in pos] for pos in top_copy]
+
   true_tokens = ids_to_tokens(true_ids)
-  a = a.detach().numpy()
+  a = a.detach().numpy().tolist()
 
   for tt, ai, p_copy, p_gen in zip(true_tokens, a, copy_tokens, gen_tokens):
-    air = round(ai,2)
+    air = round(ai,4)
     print(tt, air, p_copy, 1-air, p_gen)
 
 def plot_copy_distributions(copy_probs: torch.Tensor):
@@ -103,7 +108,8 @@ def plot_copy_distributions(copy_probs: torch.Tensor):
     plt.hist(probs)
     plt.show()
 
-def visualise_copying(model, xys):
+def visualise_copying(model, xys, lim=None):
+  if lim is not None: xys = xys[:lim]
   for x, y in xys:
     print(x)
     print(y)
@@ -116,8 +122,11 @@ def visualise_copying(model, xys):
     data = model.generator.copy_data
     a = data['a'][:,0,0]
     copy = data['copy'][:,0,:]
-    gen = data['gen'][:,0,:]
+    print('copy: ', copy)
+    copy = torch.softmax(copy, dim=1)
+    print('copy: ', copy.shape)
+    gen = torch.softmax(data['gen'][:,0,:], dim=1)
     #print(greedy_decode(model, src)[0])
     visualise_distribution(a, copy, gen, tgt_out)
-    plot_copy_distributions(copy)
-    input("continue")
+    # plot_copy_distributions(copy)
+    if lim is None: input("continue")

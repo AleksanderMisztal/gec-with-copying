@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import LayerNorm # ! Annotated transformer has a custom implementation, idk if important
 from copygec.models.common import PositionalEncoding
-
+import numpy as np
 
 def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=1024, h=8, dropout=0.1, device=None):
   if device is None: device = torch.device('cpu')
@@ -84,7 +84,7 @@ class CopyEncoderDecoder(EncoderDecoder):
   def decode(self, tgt, memory, src):
     htgt = self.decode_only(tgt, memory)
     y = self.generator(htgt, memory, src)
-    return y 
+    return y
 
 
 class CopyGenerator(nn.Module):
@@ -97,26 +97,33 @@ class CopyGenerator(nn.Module):
     self.copy_data = None
 
   def forward(self, htgt, hsrc, src):
-    p_gen = self.generator(htgt)
+    gen_score = self.generator(htgt)
     # Nt, bs, d_model ; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
-    p_copy = pos_probs_to_idx_probs(src, attns, self.vocab_s)
+    copy_score = pos_scores_to_idx_scores(src, attns, self.vocab_s)
+    # a_copy.shape = Nt, bs, 1
     a_copy = torch.sigmoid(self.copy_prob_lin(scores))
-    a_copy = torch.full(a_copy.shape, .5).to(a_copy.device)
-    #a_copy.cuda(device=0)
-    self.copy_data = {'a': a_copy, 'copy': p_copy, 'gen': p_gen}
+    if torch.cuda.is_available(): a_copy.cuda(device=0)
+    self.copy_data = {'a': a_copy, 'copy': copy_score, 'gen': gen_score}
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
-    res = a_copy * p_copy + (1 - a_copy) * p_gen
+    copy_p = torch.softmax(copy_score, dim=2)
+    gen_p = torch.softmax(gen_score, dim=2)
+    res = torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
+    #res = a_copy * copy_score + (1. - a_copy) * gen_score
     return res
 
 
-def pos_probs_to_idx_probs(src, probs, vocab_s):
+def pos_scores_to_idx_scores(src, scores, vocab_s):
   # src   = [bos_id, w1_id, w2_id, eos_id]
-  # probs = [bos_pr, w1_pr, w2_pr, eos_pr]
-  # out   = [0,0, ..., w1_pr, ..., w2_prob, ...]
+  # scores = [bos_score, w1_score, w2_score, eos_score]
+  # out   = [-inf,-inf, ..., w1_score, ..., w2_score, ...]
   oh = F.one_hot(src, vocab_s) * 1.0
+  mask = torch.sum(F.one_hot(src, vocab_s), dim=0)
+  mask = mask.float().masked_fill(mask == 0, -np.inf)
+  mask = mask.float().masked_fill(mask > 0, 0)
   # (bs, Nt, Ns) x (Ns, bs, vocab_s) -> (Nt,bs,vocab_s)
-  return torch.bmm(probs, oh.transpose(0,1)).transpose(0,1)
+  oh_scores = torch.bmm(scores, oh.transpose(0,1)).transpose(0,1)
+  return oh_scores + mask
 
 
 class Encoder(nn.Module):
@@ -160,7 +167,7 @@ class Decoder(nn.Module):
 class DecoderLayer(nn.Module):
   def __init__(self, d_model, self_attn, src_attn, feed_forward, dropout):
     super(DecoderLayer, self).__init__()
-    self.self_attn = self_attn # Necessary for .to(device)?
+    self.self_attn = self_attn
     self_attn_lmbd = lambda x, mask: self_attn(x,x,x,mask)
     self.self_attn_sl = ResidualSublayer(self_attn_lmbd, d_model, dropout)
     self.src_attn_sl = ResidualSublayer(src_attn, d_model, dropout)

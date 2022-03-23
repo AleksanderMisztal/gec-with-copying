@@ -3,6 +3,13 @@ import torch
 import json
 import random
 
+def zip_tensors(a, b):
+  a = a.detach().numpy().tolist()
+  b = b.detach().numpy().tolist()
+
+  return [list(zip(ai, bi)) for ai, bi in zip(a,b)]
+
+
 def unzip(xys):
   xs = [x for x, y in xys]
   ys = [y for x, y in xys]

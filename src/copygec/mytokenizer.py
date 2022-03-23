@@ -25,6 +25,7 @@ tokenizer.add_special_tokens([BOS_T, EOS_T, PAD_T])
 def enc(x): return tokenizer.encode(x).ids
 def dec(y): return " ".join(tokenizer.decode(y).split())
 def ids_to_tokens(ids): return [tokenizer.id_to_token(id) for id in ids]
+def id_to_token(id): return tokenizer.id_to_token(id)
 
 def train_tokenizer(sentences):
   trainer = BpeTrainer(

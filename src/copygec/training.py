@@ -11,12 +11,13 @@ def train_epoch(model, loss_fn, dataloader, optimizer):
     optimizer.zero_grad()
     tgt_out = tgt[1:, :]
     loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-    loss.backward()
+    try:
+      loss.backward()
+    except Exception as e:
+      torch.cuda.memory_summary(device=None, abbreviated=False)
+      raise e
     optimizer.step()
     losses += loss.item()
-
-    #print(f'Step {min(len(dataloader), steps*dataloader.batch_size)} / {len(dataloader)}. Train loss: {round(losses/steps,3)}.',end='\r')
-
   return losses/steps
 
 def evaluate(model, loss_fn, dataloader):
