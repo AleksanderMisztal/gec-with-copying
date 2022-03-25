@@ -91,7 +91,7 @@ class CopyGenerator(nn.Module):
   def __init__(self, d_model, vocab_s):
     super(CopyGenerator, self).__init__()
     self.vocab_s = vocab_s
-    self.attn = MultiHeadedAttention(1, d_model)
+    self.attn = MultiHeadedAttention(1, d_model, dropout=0)
     self.copy_prob_lin = nn.Linear(d_model, 1)
     self.generator = nn.Linear(d_model, vocab_s)
     self.copy_data = None
@@ -100,30 +100,22 @@ class CopyGenerator(nn.Module):
     gen_score = self.generator(htgt)
     # Nt, bs, d_model ; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
-    copy_score = pos_scores_to_idx_scores(src, attns, self.vocab_s)
+    copy_p = pos_probs_to_idx_probs(src, attns, self.vocab_s)
     # a_copy.shape = Nt, bs, 1
     a_copy = torch.sigmoid(self.copy_prob_lin(scores))
     if torch.cuda.is_available(): a_copy.cuda(device=0)
-    self.copy_data = {'a': a_copy, 'copy': copy_score, 'gen': gen_score}
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
-    copy_p = torch.softmax(copy_score, dim=2)
     gen_p = torch.softmax(gen_score, dim=2)
+    self.copy_data = {'a': a_copy.detach(), 'copy': copy_p.detach(), 'gen': gen_p.detach()}
     res = torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
     #res = a_copy * copy_score + (1. - a_copy) * gen_score
     return res
 
 
-def pos_scores_to_idx_scores(src, scores, vocab_s):
-  # src   = [bos_id, w1_id, w2_id, eos_id]
-  # scores = [bos_score, w1_score, w2_score, eos_score]
-  # out   = [-inf,-inf, ..., w1_score, ..., w2_score, ...]
+def pos_probs_to_idx_probs(src, scores, vocab_s):
   oh = F.one_hot(src, vocab_s) * 1.0
-  mask = torch.sum(F.one_hot(src, vocab_s), dim=0)
-  mask = mask.float().masked_fill(mask == 0, -np.inf)
-  mask = mask.float().masked_fill(mask > 0, 0)
-  # (bs, Nt, Ns) x (Ns, bs, vocab_s) -> (Nt,bs,vocab_s)
-  oh_scores = torch.bmm(scores, oh.transpose(0,1)).transpose(0,1)
-  return oh_scores + mask
+  return torch.bmm(scores, oh.transpose(0,1)).transpose(0,1)
+  
 
 
 class Encoder(nn.Module):

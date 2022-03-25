@@ -4,8 +4,8 @@ import json
 import random
 
 def zip_tensors(a, b):
-  a = a.detach().numpy().tolist()
-  b = b.detach().numpy().tolist()
+  a = a.cpu().detach().numpy().tolist()
+  b = b.cpu().detach().numpy().tolist()
 
   return [list(zip(ai, bi)) for ai, bi in zip(a,b)]
 

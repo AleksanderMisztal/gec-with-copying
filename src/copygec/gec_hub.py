@@ -93,14 +93,16 @@ def visualise_distribution(a, copy_probs, gen_probs, true_ids):
   copy_tokens = [[(id_to_token(id),round(p,4)) for id,p in pos] for pos in top_copy]
 
   true_tokens = ids_to_tokens(true_ids)
-  a = a.detach().numpy().tolist()
+  a = a.cpu().detach().numpy().tolist()
 
   for tt, ai, p_copy, p_gen in zip(true_tokens, a, copy_tokens, gen_tokens):
     air = round(ai,4)
-    print(tt, air, p_copy, 1-air, p_gen)
+    print(tt, air)
+    print(*p_copy)
+    print(*p_gen)
 
 def plot_copy_distributions(copy_probs: torch.Tensor):
-  copy_probs = copy_probs.detach().numpy().tolist()
+  copy_probs = copy_probs.cpu().detach().numpy().tolist()
   significants = [[p for p in probs if not math.isclose(p, 0.0)] for probs in copy_probs]
   
   print(significants)
@@ -113,20 +115,15 @@ def visualise_copying(model, xys, lim=None):
   for x, y in xys:
     print(x)
     print(y)
-    print(enc(y))
-    src = sentences_to_padded_tensor([x])
-    tgt = sentences_to_padded_tensor([y])
+    src = sentences_to_padded_tensor([x]).to(DEVICE)
+    tgt = sentences_to_padded_tensor([y]).to(DEVICE)
     tgt_in =  tgt[:-1, :]
     tgt_out =  tgt[1:, :]
     out = model(src, tgt_in)
     data = model.generator.copy_data
+    print(greedy_decode(model, src, max_len=tgt.shape[0]+5)[0])
     a = data['a'][:,0,0]
     copy = data['copy'][:,0,:]
-    print('copy: ', copy)
-    copy = torch.softmax(copy, dim=1)
-    print('copy: ', copy.shape)
-    gen = torch.softmax(data['gen'][:,0,:], dim=1)
-    #print(greedy_decode(model, src)[0])
+    gen = data['gen'][:,0,:]
     visualise_distribution(a, copy, gen, tgt_out)
-    # plot_copy_distributions(copy)
     if lim is None: input("continue")
