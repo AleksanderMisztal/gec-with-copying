@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from copygec.models.common import PositionalEncoding
+from copygec.models.pos_encoding import PositionalEncoding
 
 class Transformer(nn.Module):
   def __init__(self, vocab_s, pad_idx, num_layers=1, d_model=512, device=None):

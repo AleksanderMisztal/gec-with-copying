@@ -3,9 +3,8 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import LayerNorm # ! Annotated transformer has a custom implementation, idk if important
-from copygec.models.common import PositionalEncoding
-import numpy as np
+from torch.nn import LayerNorm
+from copygec.models.pos_encoding import PositionalEncoding
 
 def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=1024, h=8, dropout=0.1, device=None):
   if device is None: device = torch.device('cpu')
@@ -16,16 +15,17 @@ def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=102
     Embeddings(vocab_s, d_model),
     PositionalEncoding(d_model, dropout)
   )
+  embedding_layer = embed[0].emb
 
   Model = CopyEncoderDecoder if copy else EncoderDecoder
-  UsedGenerator = CopyGenerator if copy else nn.Linear
+  generator = CopyGenerator(d_model, vocab_s, embedding_layer) if copy else nn.Linear(d_model, vocab_s)
 
   model = Model(
     Encoder(EncoderLayer(d_model, attn(), ff(), dropout), num_layers),
     Decoder(DecoderLayer(d_model, attn(), attn(), ff(), dropout), num_layers),
     embed,
     embed,
-    UsedGenerator(d_model, vocab_s),
+    generator,
     pad_idx,
     device
   )
@@ -71,8 +71,8 @@ class EncoderDecoder(nn.Module):
   def decode(self, tgt, memory):
     htgt = self.decode_only(tgt, memory)
     y = self.generator(htgt)
-    return y 
-    
+    return y
+
 
 class CopyEncoderDecoder(EncoderDecoder):
   def forward(self, src, tgt):
@@ -88,16 +88,18 @@ class CopyEncoderDecoder(EncoderDecoder):
 
 
 class CopyGenerator(nn.Module):
-  def __init__(self, d_model, vocab_s):
+  def __init__(self, d_model, vocab_s, emb_layer, is_copying=True):
     super(CopyGenerator, self).__init__()
     self.vocab_s = vocab_s
     self.attn = MultiHeadedAttention(1, d_model, dropout=0)
     self.copy_prob_lin = nn.Linear(d_model, 1)
-    self.generator = nn.Linear(d_model, vocab_s)
+    #self.generator = nn.Linear(d_model, vocab_s)
+    self.emb_layer = emb_layer
     self.copy_data = None
+    self.is_copying = is_copying
 
   def forward(self, htgt, hsrc, src):
-    gen_score = self.generator(htgt)
+    gen_score = torch.matmul(htgt, self.emb_layer.weight.T) #self.generator(htgt)
     # Nt, bs, d_model ; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
     copy_p = pos_probs_to_idx_probs(src, attns, self.vocab_s)
@@ -107,9 +109,10 @@ class CopyGenerator(nn.Module):
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
     gen_p = torch.softmax(gen_score, dim=2)
     self.copy_data = {'a': a_copy.detach(), 'copy': copy_p.detach(), 'gen': gen_p.detach()}
-    res = torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
-    #res = a_copy * copy_score + (1. - a_copy) * gen_score
-    return res
+    if self.is_copying:
+      return torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
+    else:
+      return gen_score
 
 
 def pos_probs_to_idx_probs(src, scores, vocab_s):
@@ -244,11 +247,11 @@ class PositionwiseFeedForward(nn.Module):
 class Embeddings(nn.Module):
   def __init__(self, vocab_s, d_model):
     super(Embeddings, self).__init__()
-    self.lut = nn.Embedding(vocab_s, d_model)
+    self.emb = nn.Embedding(vocab_s, d_model)
     self.d_model = d_model
 
   def forward(self, x):
-    return self.lut(x) * math.sqrt(self.d_model)
+    return self.emb(x) * math.sqrt(self.d_model)
 
 
 def cloned_layer(module, n):

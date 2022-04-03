@@ -3,13 +3,14 @@ import torch
 import os
 import json
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from copygec.dataloader import DataLoader, sentences_to_padded_tensor
 from copygec.decoding import greedy_decode
 from copygec.training import train_model as _train_model
 from copygec.utils import noise, writelines, read_json, zip_tensors
 from copygec.models.optimizer import get_std_opt
-from copygec.mytokenizer import PAD_IDX, enc
+from copygec.mytokenizer import PAD_IDX, id_to_token, ids_to_tokens
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -23,7 +24,7 @@ def load_model(model, model_name):
   save_path = get_save_path(model_name)
   model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
 
-def train_model(model, xys_train, xys_dev, epochs, model_name, add_noise=False):
+def train_model(model, xys_train, xys_dev, epochs, model_name, add_noise=False, lm_pretraining_epochs=0):
   save_path = get_save_path(model_name)
   loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
   optimizer = get_std_opt(model, model.d_model)
@@ -32,7 +33,10 @@ def train_model(model, xys_train, xys_dev, epochs, model_name, add_noise=False):
   train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE, preprocess)
   dev_dataloader = DataLoader(xys_dev, BATCH_SIZE, DEVICE)
 
-  _train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs, save_path)
+  model.is_copying = False
+  _train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, lm_pretraining_epochs, save_path)
+  model.is_copying = True
+  _train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs-lm_pretraining_epochs, save_path)
 
 def get_predictions(model, xs):
   s, bs = len(xs), BATCH_SIZE
@@ -77,9 +81,6 @@ def run_errant(model_name):
 
   os.system('rm ./out/' +model_name+ '/{orig,corr,pred}.txt')
   os.system('rm ./out/' +model_name+ '/{hyp,ref}.m2')
-
-from copygec.mytokenizer import id_to_token, ids_to_tokens
-import matplotlib.pyplot as plt
 
 
 def visualise_distribution(a, copy_probs, gen_probs, true_ids):
