@@ -11,14 +11,15 @@ def train_epoch(model, loss_fn, dataloader, optimizer):
     optimizer.zero_grad()
     tgt_out = tgt[1:, :]
     loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-    try:
-      loss.backward()
-    except Exception as e:
-      torch.cuda.memory_summary(device=None, abbreviated=False)
-      raise e
+    loss.backward()
     optimizer.step()
     losses += loss.item()
-  return losses/steps
+    del loss
+    del logits
+  average_loss = losses / steps
+  assert type(average_loss) is float
+  return average_loss
+
 
 def evaluate(model, loss_fn, dataloader):
   model.eval()
@@ -32,8 +33,11 @@ def evaluate(model, loss_fn, dataloader):
     tgt_out = tgt[1:, :]
     loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
     losses += loss.item()
+    
+  average_loss = losses / steps
+  assert type(average_loss) is float
+  return average_loss
 
-  return losses / steps
 
 def train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs, save_path):
   min_dev_loss = 100_000

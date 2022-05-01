@@ -17,15 +17,12 @@ def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=102
   )
   embedding_layer = embed[0].emb
 
-  Model = CopyEncoderDecoder if copy else EncoderDecoder
-  generator = CopyGenerator(d_model, vocab_s, embedding_layer) if copy else nn.Linear(d_model, vocab_s)
-
-  model = Model(
+  model = CopyEncoderDecoder(
     Encoder(EncoderLayer(d_model, attn(), ff(), dropout), num_layers),
     Decoder(DecoderLayer(d_model, attn(), attn(), ff(), dropout), num_layers),
     embed,
     embed,
-    generator,
+    CopyGenerator(d_model, vocab_s, embedding_layer, is_copying=copy),
     pad_idx,
     device
   )
@@ -37,9 +34,9 @@ def make_model(vocab_s, pad_idx, copy=False, num_layers=1, d_model=512, d_ff=102
   return model.to(device)
 
 
-class EncoderDecoder(nn.Module):
+class CopyEncoderDecoder(nn.Module):
   def __init__(self, encoder, decoder, src_embed, tgt_embed, generator, pad_idx, device):
-    super(EncoderDecoder, self).__init__()
+    super(CopyEncoderDecoder, self).__init__()
     self.encoder = encoder
     self.decoder = decoder
     self.src_embed = src_embed
@@ -47,14 +44,12 @@ class EncoderDecoder(nn.Module):
     self.generator = generator
     self.pad_idx = pad_idx
     self.d_model = encoder.layers[0].d_model
-    self.to(device)
     self.device = device
       
   def forward(self, src, tgt):
     memory = self.encode(src)
-    htgt = self.decode_only(tgt, memory)
-    y = self.generator(htgt)
-    return y 
+    y = self.decode(tgt, memory, src)
+    return y
   
   def encode(self, src):
     src_padding_mask = (src == self.pad_idx).transpose(0, 1)
@@ -67,19 +62,6 @@ class EncoderDecoder(nn.Module):
     tgt_padding_mask = (tgt == self.pad_idx).transpose(0, 1).to(self.device)
     tgt_emb = self.tgt_embed(tgt)
     return self.decoder(tgt_emb, memory, tgt_subsequent_mask)
-  
-  def decode(self, tgt, memory):
-    htgt = self.decode_only(tgt, memory)
-    y = self.generator(htgt)
-    return y
-
-
-class CopyEncoderDecoder(EncoderDecoder):
-  def forward(self, src, tgt):
-    memory = self.encode(src)
-    htgt = self.decode_only(tgt, memory)
-    y = self.generator(htgt, memory, src)
-    return y
   
   def decode(self, tgt, memory, src):
     htgt = self.decode_only(tgt, memory)
@@ -100,19 +82,17 @@ class CopyGenerator(nn.Module):
 
   def forward(self, htgt, hsrc, src):
     gen_score = torch.matmul(htgt, self.emb_layer.weight.T) #self.generator(htgt)
+    if not self.is_copying: return gen_score
     # Nt, bs, d_model ; bs, Nt, Ns
     scores, attns = self.attn(htgt, hsrc, hsrc, return_attns=True)
     copy_p = pos_probs_to_idx_probs(src, attns, self.vocab_s)
     # a_copy.shape = Nt, bs, 1
     a_copy = torch.sigmoid(self.copy_prob_lin(scores))
-    if torch.cuda.is_available(): a_copy.cuda(device=0)
+    #if torch.cuda.is_available(): a_copy.cuda(device=0)
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
     gen_p = torch.softmax(gen_score, dim=2)
     self.copy_data = {'a': a_copy.detach(), 'copy': copy_p.detach(), 'gen': gen_p.detach()}
-    if self.is_copying:
-      return torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
-    else:
-      return gen_score
+    return torch.log(a_copy * copy_p + (1.-a_copy) * gen_p)
 
 
 def pos_probs_to_idx_probs(src, scores, vocab_s):

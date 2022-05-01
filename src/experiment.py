@@ -1,26 +1,27 @@
-import torch
+from copygec.models.transformer_custom import make_model as Transformer
+from copygec.mytokenizer import VOCAB_S, PAD_IDX
+from copygec.dataloader import load_datasets
+from copygec.utils import unzip
+import copygec.gec_hub as hub
 
-from copygec.dataloader import DataLoader, load_datasets
-from copygec.mytokenizer import PAD_IDX, VOCAB_S
-import torch.nn.functional as F
+num_layers = 3
+model_name = '04-04_10h39m01s_3l_30e_copy_noise'
+
+transformer = Transformer(VOCAB_S, PAD_IDX, copy=True, num_layers=num_layers, device=hub.DEVICE)
+hub.load_model(transformer, model_name)
+
+# xys = load_datasets(dummy=True)
+
+# print('Predicting...')
+# orig, corr = unzip(xys['test'])
+# pred = hub.get_bs_predictions(transformer, orig)
+# hub.save_results(orig, corr, pred, model_name)
+# hub.run_errant(model_name)
+
+# print('Testing copying...')
+# hub.visualise_copying(transformer, xys['test'], lim=3)
 
 
-def evaluate(loss_fn, dataloader):
-  losses = 0
-  steps = 0
+pred = hub.get_bs_predictions(transformer, ['Cats hates water.'])
 
-  for src, tgt in dataloader:
-    steps += 1
-    tgt_out = F.one_hot(tgt[1:, :], VOCAB_S)
-    print(src.shape, tgt_out.shape)
-    loss = loss_fn(src.reshape(-1, src.shape[-1]), tgt_out.reshape(-1))
-    losses += loss.item()
-
-  return losses / steps
-
-xys = load_datasets()
-print(len(xys['train']),len(xys['dev']),len(xys['test']))
-dataloader = DataLoader(xys['dev'], 128, torch.device('cpu'))
-loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-
-print(evaluate(loss_fn, dataloader))
+print(pred)

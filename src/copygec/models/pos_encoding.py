@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class PositionalEncoding(nn.Module):
-  def __init__(self, emb_size, dropout, maxlen = 5000):
+  def __init__(self, emb_size, dropout_p, maxlen = 5000):
     super(PositionalEncoding, self).__init__()
     den = torch.exp(- torch.arange(0, emb_size, 2)* math.log(10000) / emb_size)
     pos = torch.arange(0, maxlen).reshape(maxlen, 1)
@@ -12,7 +12,7 @@ class PositionalEncoding(nn.Module):
     pos_embed[:, 1::2] = torch.cos(pos * den)
     pos_embed = pos_embed.unsqueeze(-2)
 
-    self.dropout = nn.Dropout(dropout)
+    self.dropout = nn.Dropout(dropout_p)
     self.register_buffer('pos_embed', pos_embed)
 
   def forward(self, token_embedding):

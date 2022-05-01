@@ -27,6 +27,10 @@ def read_json(path):
   with open(path, 'r', encoding='utf-8') as f:
     return json.load(f)
 
+def write_json(path, data):
+  with open(path, 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+
 def writelines(path, lines):
   with open(path, "w", encoding='utf-8') as f:
     f.write('\n'.join(lines))
@@ -40,7 +44,7 @@ def show_cuda_memory():
   print(f'Total: {t}, reserved: {r}, allocated: {a}, free: {f}')
 
 chars = string.ascii_letters + string.digits
-with open('./data/words.txt') as f: words = f.read().split()
+with open('./data/words.txt', 'r') as f: words = f.read().split()
 
 def rand_char():
   return random.choice(chars)

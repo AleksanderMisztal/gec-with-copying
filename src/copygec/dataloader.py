@@ -1,6 +1,7 @@
 import random
 from copygec.mytokenizer import PAD_IDX, enc
 from copygec.utils import read_json, to_padded_tensor, unzip
+from itertools import islice
 
 def load_datasets(name='data', dummy=False):
 	data = read_json(f'./data/{name}.json')
@@ -11,13 +12,20 @@ def load_datasets(name='data', dummy=False):
 	data['test'] = data['test'][:10]
 	return data
 
+def load_pretraining_sentences(filename, chunk_size=100_000):
+	with open(filename, 'r', encoding='utf-8') as f:
+		while True:
+			next_n_lines = list(islice(f, chunk_size))
+			if next_n_lines: yield next_n_lines
+			else: break
+
 def sentences_to_padded_tensor(sentences):
 	return to_padded_tensor([enc(s) for s in sentences], PAD_IDX).T
 
 
 class DataLoader:
 	def __init__(self, xys, batch_size, device, preprocess=None):
-		self.xys = xys.copy()
+		self.xys = xys
 		self.batch_size = batch_size
 		self.device = device
 		self.preprocess = preprocess
