@@ -3,10 +3,13 @@ import random
 
 def orig_from_m2(m2_file):
 	m2 = open(m2_file, encoding='utf-8').read().strip().split("\n\n")	
-	return [sent.split('\n')[0][2:] for sent in m2]
+	origs = [entry.split('\n')[0][2:] for entry in m2]
+	print(m2_file, len(origs))
+	return origs
 
-# Apply the edits of a single annotator to generate the corrected sentences.
+
 def corr_from_m2(m2_file, annotator_id=0):
+	# Apply the edits of a single annotator to generate the corrected sentences.
 	m2 = open(m2_file, encoding='utf').read().strip().split("\n\n")
 	out = []
 	# Do not apply edits with these error types
@@ -49,9 +52,9 @@ paths = {
 		'./data/conll+nucle/nucle.train.gold.bea19.m2',
 		'./data/fce/fce.train.gold.bea19.m2',
 		'./data/wi+locness/ABC.train.gold.bea19.m2',
-		'./data/fce/fce.dev.gold.bea19.m2',
 	],
 	'dev':[
+		'./data/fce/fce.dev.gold.bea19.m2',
 		'./data/wi+locness/ABCN.dev.gold.bea19.m2', # 50 F_0.5 is really good 
 	],
 	'test': [
@@ -66,5 +69,5 @@ data = {}
 for name in paths.keys():
 	data[name] = process_set(name)
 
-with open(f'./data/{savename}.json', 'w', encoding='utf-8') as f:
-	json.dump(data, f, ensure_ascii=False)
+# with open(f'./data/{savename}.json', 'w', encoding='utf-8') as f:
+# 	json.dump(data, f, ensure_ascii=False)

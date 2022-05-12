@@ -88,7 +88,6 @@ class CopyGenerator(nn.Module):
     copy_p = pos_probs_to_idx_probs(src, attns, self.vocab_s)
     # a_copy.shape = Nt, bs, 1
     a_copy = torch.sigmoid(self.copy_prob_lin(scores))
-    #if torch.cuda.is_available(): a_copy.cuda(device=0)
     # Nt, bs, vocab_s = Nt,bs,1 ; Nt,bs,vocab_s ; Nt,bs,vocab_s
     gen_p = torch.softmax(gen_score, dim=2)
     self.copy_data = {'a': a_copy.detach(), 'copy': copy_p.detach(), 'gen': gen_p.detach()}

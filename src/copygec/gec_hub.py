@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 from copygec.dataloader import DataLoader, sentences_to_padded_tensor
 from copygec.decoding import beam_search_decode, greedy_decode
 from copygec.training import evaluate, train_epoch, train_model as _train_model
-from copygec.utils import noise, write_json, writelines, read_json, zip_tensors
-from copygec.models.optimizer import get_std_opt
+from copygec.utils import mask, write_json, writelines, read_json, zip_tensors
 from copygec.mytokenizer import PAD_IDX, id_to_token, ids_to_tokens
 
 
@@ -22,38 +21,36 @@ def get_save_path(model_name):
 
 def load_model(model, model_name):
   save_path = get_save_path(model_name)
-  model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
+  model.load_state_dict(torch.load(save_path, map_location=DEVICE))
 
-def train_model(model, xys_train, xys_dev, epochs, model_name, add_noise=False):
+def train_model(model, xys_train, xys_dev, opt, epochs, model_name, add_noise=False):
   save_path = get_save_path(model_name)
   loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-  optimizer = get_std_opt(model, model.d_model)
-  preprocess = noise if add_noise else None
+  preprocess = mask if add_noise else None
 
   train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE, preprocess)
   dev_dataloader = DataLoader(xys_dev, BATCH_SIZE, DEVICE)
 
-  _train_model(model, loss_fn, train_dataloader, dev_dataloader, optimizer, epochs, save_path)
+  _train_model(model, loss_fn, train_dataloader, dev_dataloader, opt, epochs, save_path)
 
-def synthetic_pretrain(model, sentences_it):
+def synthetic_pretrain(model, sentences_it, opt):
   loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-  optimizer = get_std_opt(model, model.d_model)
   i=0
   for sentences in sentences_it:
     i+=1
-    xys_dev = [[noise(x), x] for x in sentences[:1000]]
-    xys_train = [[noise(x), x] for x in sentences[1000:]]
-    train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE)
-    dev_dataloader = DataLoader(xys_dev, BATCH_SIZE, DEVICE)
+    xys_dev = [[x, x] for x in sentences[:2000]]
+    xys_train = [[x, x] for x in sentences[2000:]]
+    train_dataloader = DataLoader(xys_train, BATCH_SIZE, DEVICE, preprocess=mask)
+    dev_dataloader = DataLoader(xys_dev, BATCH_SIZE, DEVICE, preprocess=mask)
 
-    train_loss = train_epoch(model, loss_fn, train_dataloader, optimizer)
+    train_loss = train_epoch(model, loss_fn, train_dataloader, opt)
     dev_loss = evaluate(model, loss_fn, dev_dataloader)
-    print(f'Epoch {i} done. Train loss: {round(train_loss,3)}, dev loss: {round(dev_loss,3)}.')
-    
-    del train_dataloader, dev_dataloader, xys_dev, xys_train, sentences
+    print(f'Epoch {i} done. Train loss: {round(train_loss,3)}, dev loss: {round(dev_loss,3)}.', flush=True)
+    print(torch.cuda.memory_summary())
+    del sentences, xys_dev, xys_train, train_dataloader, dev_dataloader
     gc.collect()
     torch.cuda.empty_cache()
-    gc.collect()
+    print(torch.cuda.memory_summary())
 
 
 def get_predictions(model, xs):
@@ -82,16 +79,18 @@ def save_results(orig, corr, pred, model_name):
   Path(dir).mkdir(parents=True, exist_ok=True)
 
   ocps = [{'corr': c, 'orig': o, 'pred': p} for (c, o, p) in zip(corr, orig, pred)]
-  false_positives = [e for e in ocps if e['corr'] != e['pred'] and e['pred'] != e['orig']]
-  false_negatives = [e for e in ocps if e['corr'] != e['pred'] and e['pred'] == e['orig']]
-  true_positives = [e for e in ocps if e['corr'] == e['pred'] and e['pred'] != e['orig']]
-  true_negatives = [e for e in ocps if e['corr'] == e['pred'] and e['pred'] == e['orig']]
+  diff = [e for e in ocps if e['corr'] != e['pred'] and e['pred'] != e['orig'] and e['corr'] != e['orig']]
+  fp = [e for e in ocps if e['corr'] == e['orig'] and e['pred'] != e['orig']]
+  fn = [e for e in ocps if e['corr'] != e['pred'] and e['pred'] == e['orig']]
+  tp = [e for e in ocps if e['corr'] == e['pred'] and e['pred'] != e['orig']]
+  tn = [e for e in ocps if e['corr'] == e['pred'] and e['pred'] == e['orig']]
   
   write_json(dir + '/results.json', ocps)
-  write_json(dir + '/fp.json', false_positives)
-  write_json(dir + '/fn.json', false_negatives)
-  write_json(dir + '/tp.json', true_positives)
-  write_json(dir + '/tn.json', true_negatives)
+  write_json(dir + '/diff.json', diff)
+  write_json(dir + '/fp.json', fp)
+  write_json(dir + '/fn.json', fn)
+  write_json(dir + '/tp.json', tp)
+  write_json(dir + '/tn.json', tn)
 
 
 def run_errant(model_name):

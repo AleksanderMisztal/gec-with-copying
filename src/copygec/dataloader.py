@@ -1,7 +1,6 @@
 import random
 from copygec.mytokenizer import PAD_IDX, enc
-from copygec.utils import read_json, to_padded_tensor, unzip
-from itertools import islice
+from copygec.utils import read_json, readlines, to_padded_tensor, unzip
 
 def load_datasets(name='data', dummy=False):
 	data = read_json(f'./data/{name}.json')
@@ -12,15 +11,15 @@ def load_datasets(name='data', dummy=False):
 	data['test'] = data['test'][:10]
 	return data
 
-def load_pretraining_sentences(filename, chunk_size=100_000):
-	with open(filename, 'r', encoding='utf-8') as f:
-		while True:
-			next_n_lines = list(islice(f, chunk_size))
-			if next_n_lines: yield next_n_lines
-			else: break
+def load_pretraining_sentences():
+	for i in range(25):
+		yield [line.strip() for line in readlines(f'data/news/{i}.txt')]
 
-def sentences_to_padded_tensor(sentences):
-	return to_padded_tensor([enc(s) for s in sentences], PAD_IDX).T
+def id(x): return x
+
+def sentences_to_padded_tensor(sentences, process_tokens=id):
+	if process_tokens is None: process_tokens = id
+	return to_padded_tensor([process_tokens(enc(s)) for s in sentences], PAD_IDX).T
 
 
 class DataLoader:
@@ -47,8 +46,7 @@ class DataLoader:
 	def __next__(self):
 		if self.iter < len(self.batches):
 			xs, ys = unzip(self.batches[self.iter])
-			if self.preprocess is not None: xs = [self.preprocess(x) for x in xs]
 			self.iter += 1
-			return sentences_to_padded_tensor(xs).to(self.device), sentences_to_padded_tensor(ys).to(self.device)
+			return sentences_to_padded_tensor(xs, self.preprocess).to(self.device), sentences_to_padded_tensor(ys).to(self.device)
 		else:
 			raise StopIteration

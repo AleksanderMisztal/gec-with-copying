@@ -13,6 +13,7 @@ class Transformer(nn.Module):
     self.transformer = nn.Transformer(d_model=d_model, dim_feedforward=1024, num_encoder_layers=num_layers, num_decoder_layers=num_layers)
     self.generator = nn.Linear(d_model, vocab_s)
     self.d_model = d_model
+    self.to(device)
 
   def forward(self, src, tgt):
     memory = self.encode(src)

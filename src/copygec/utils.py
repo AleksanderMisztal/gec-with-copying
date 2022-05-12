@@ -1,4 +1,4 @@
-import string
+import copy
 import torch
 import json
 import random
@@ -35,6 +35,10 @@ def writelines(path, lines):
   with open(path, "w", encoding='utf-8') as f:
     f.write('\n'.join(lines))
 
+def readlines(path):
+  with open(path, "r", encoding='utf-8') as f:
+    return f.readlines()
+
 def show_cuda_memory():
   MB = 10 ** 6
   t = torch.cuda.get_device_properties(0).total_memory//MB
@@ -43,32 +47,16 @@ def show_cuda_memory():
   f = r-a
   print(f'Total: {t}, reserved: {r}, allocated: {a}, free: {f}')
 
-chars = string.ascii_letters + string.digits
-with open('./data/words.txt', 'r') as f: words = f.read().split()
-
-def rand_char():
-  return random.choice(chars)
-
-def rand_word():
-  return random.choice(words)
-
-def noise(x):
-  tokens = x.split()
-  tok_changes = len(tokens)//7
-  for i in random.sample(range(len(tokens)-3), tok_changes):
-    if i >= len(tokens): continue
-    t = list(tokens[i])
-    a = 100*random.random()
-    if a < 40:
-      t[random.choice(range(len(t)))] = rand_char()
-      tokens[i] = ''.join(t)
-    elif a < 60:
-      tokens.pop(i)
-    elif a < 80:
-      tokens.insert(i, rand_word())
-    elif i > 0:
-      tokens[i-1:i+1] = [tokens[i], tokens[i-1]]
-  return ' '.join(tokens)
+def mask(tokens, vocab_s=30_000, mask_idx=3):
+  tokens = copy.copy(tokens)
+  loss_mask = [0 for _ in range(len(tokens))]
+  for i in range(1,len(tokens)-1):
+    a = random.random()*100
+    if a > 16: continue
+    elif a > 8: tokens[i] = mask_idx
+    elif a > 4: tokens[i] = random.randint(4, vocab_s-1)
+    loss_mask[i] = 1
+  return tokens#, loss_mask
 
 
 from heapq import heapify, heappush, heappushpop
@@ -91,3 +79,4 @@ class MaxHeap():
 
   def getTop(self):
     return sorted(self.h, reverse=True)
+
